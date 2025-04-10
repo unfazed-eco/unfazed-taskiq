@@ -1,0 +1,12 @@
+__pycache__
+.pytest_cache
+.DS_Store
+.ruff_cache
+.coverage
+.venv
+migrations
+.VSCodeCounter
+dist
+.mypy_cache
+.vscode
+site
