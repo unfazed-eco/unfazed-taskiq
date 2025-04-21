@@ -15,7 +15,7 @@ class TaskiqLifeSpan(BaseLifeSpan):
         self.agent = agent
 
     async def on_startup(self) -> None:
-        await self.agent.broker.startup()
+        await self.agent.startup()
 
     async def on_shutdown(self) -> None:
-        await self.agent.broker.shutdown()
+        await self.agent.shutdown()
