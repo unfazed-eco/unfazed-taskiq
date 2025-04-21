@@ -1,5 +1,4 @@
 from taskiq import AsyncBroker, AsyncResultBackend, TaskiqScheduler
-from unfazed.conf import settings
 from unfazed.utils import import_string
 
 from .settings import UnfazedTaskiqSettings
@@ -23,9 +22,7 @@ class TaskiqAgent:
     def scheduler(self) -> TaskiqScheduler:
         return self._scheduler
 
-    def setup(self) -> None:
-        taskiq_settings: UnfazedTaskiqSettings = settings["UNFAZED_TASKIQ_SETTINGS"]
-
+    def setup(self, taskiq_settings: UnfazedTaskiqSettings) -> None:
         # setup broker
         broker_cls = import_string(taskiq_settings.broker.backend)
         broker_options = taskiq_settings.broker.options
