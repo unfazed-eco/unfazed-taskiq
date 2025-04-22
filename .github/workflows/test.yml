@@ -40,4 +40,7 @@ jobs:
       - name: "Run Test"
         run: make test
         env:
-            UNFAZED_SETTINGS_MODULE: "tests.proj.entry.settings"
+          UNFAZED_SETTINGS_MODULE: "tests.proj.entry.settings"
+          REDIS_HOST: "localhost"
+          RABBITMQ_HOST: "localhost"
+

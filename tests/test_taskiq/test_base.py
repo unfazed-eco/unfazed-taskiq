@@ -1,9 +1,13 @@
+import os
+
 from taskiq import InMemoryBroker
 from taskiq.scheduler.scheduler import TaskiqScheduler
 from taskiq_redis import RedisAsyncResultBackend
 
 from unfazed_taskiq import TaskiqAgent
 from unfazed_taskiq.settings import UnfazedTaskiqSettings
+
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 
 TEMP_SETTINGS = {
     "BROKER": {
@@ -13,7 +17,7 @@ TEMP_SETTINGS = {
     "RESULT": {
         "BACKEND": "taskiq_redis.RedisAsyncResultBackend",
         "OPTIONS": {
-            "redis_url": "redis://redis:6379",
+            "redis_url": f"redis://{REDIS_HOST}:6379",
         },
     },
     "SCHEDULER": {

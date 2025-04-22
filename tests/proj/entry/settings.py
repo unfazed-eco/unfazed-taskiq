@@ -1,3 +1,7 @@
+import os
+
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+
 UNFAZED_SETTINGS = {
     "LIFESPAN": ["unfazed_taskiq.lifespan.TaskiqLifeSpan"],
     "ROOT_URLCONF": "entry.routes",
@@ -13,7 +17,7 @@ UNFAZED_TASKIQ_SETTINGS = {
     "RESULT": {
         "BACKEND": "taskiq_redis.RedisAsyncResultBackend",
         "OPTIONS": {
-            "redis_url": "redis://redis:6379",
+            "redis_url": f"redis://{REDIS_HOST}:6379",
         },
     },
     "SCHEDULER": {
