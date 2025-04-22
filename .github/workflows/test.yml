@@ -2,7 +2,7 @@ name: Test Unfazed Taskiq
 
 on:
   push:
-    branches: ["main", "dev001"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
