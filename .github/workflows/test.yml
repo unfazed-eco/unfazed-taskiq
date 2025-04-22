@@ -1,0 +1,46 @@
+name: Test Unfazed Taskiq
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  tests:
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        ports: ['5672:5672', '15672:15672']
+      redis:
+        image: redis
+        ports: ['6379:6379']
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: "ubuntu-latest"
+
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+          allow-prereleases: true
+      - name: "Install dependencies"
+        run: |
+          pip install uv
+          uv sync
+      - name: "Run format"
+        run: make format
+      - name: "Run Test"
+        run: make test
+        env:
+          UNFAZED_SETTINGS_MODULE: "tests.proj.entry.settings"
+          REDIS_HOST: "localhost"
+          RABBITMQ_HOST: "localhost"
+
