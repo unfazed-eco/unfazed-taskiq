@@ -5,10 +5,9 @@ description = "Taskiq Plugin for Unfazed"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pydantic==2.10.4",
     "taskiq>=0.11.16",
     "taskiq-aio-pika>=0.4.2",
-    "unfazed>=0.0.7",
+    "unfazed>=0.0.8",
 ]
 
 
