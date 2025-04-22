@@ -16,7 +16,7 @@ class Result(BaseModel):
 
 class Scheduler(BaseModel):
     backend: str = Field(alias="BACKEND")
-    options: t.Optional[t.Dict[str, t.Any]] = Field(default=None, alias="OPTIONS")
+    sources_cls: t.Optional[t.List[str]] = Field(default=None, alias="SOURCES_CLS")
 
 
 @register_settings("UNFAZED_TASKIQ_SETTINGS")

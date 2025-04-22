@@ -1,7 +1,6 @@
 UNFAZED_SETTINGS = {
     "LIFESPAN": ["unfazed_taskiq.lifespan.TaskiqLifeSpan"],
     "ROOT_URLCONF": "entry.routes",
-    "INSTALLED_APPS": ["app1"],
 }
 
 
@@ -15,9 +14,5 @@ UNFAZED_TASKIQ_SETTINGS = {
         "OPTIONS": {
             "redis_url": "redis://redis:6379",
         },
-    },
-    "SCHEDULER": {
-        "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "SOURCES_CLS": ["taskiq.schedule_sources.LabelScheduleSource"],
     },
 }

@@ -20,6 +20,6 @@ services:
       - redis
     command: tail -f /unfazed_taskiq/README.md
     environment:
-      - UNFAZED_SETTINGS=tests.proj.entry.settings
+      - UNFAZED_SETTINGS_MODULE=tests.proj.entry.settings
     volumes:
       - .:/unfazed_taskiq

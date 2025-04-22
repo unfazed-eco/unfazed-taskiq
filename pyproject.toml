@@ -5,6 +5,7 @@ description = "Taskiq Plugin for Unfazed"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "pydantic==2.10.4",
     "taskiq>=0.11.16",
     "taskiq-aio-pika>=0.4.2",
     "unfazed>=0.0.7",
@@ -21,10 +22,12 @@ packages = ["unfazed_taskiq"]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.15.0",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.0",
     "pytest-cov>=6.0.0",
     "ruff>=0.8.4",
+    "taskiq-redis>=1.0.7",
 ]
 
 [tool.pytest.ini_options]

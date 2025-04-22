@@ -1,6 +1,6 @@
-import pytest
 from taskiq import InMemoryBroker
 from taskiq.scheduler.scheduler import TaskiqScheduler
+from taskiq_redis import RedisAsyncResultBackend
 
 from unfazed_taskiq import TaskiqAgent
 from unfazed_taskiq.settings import UnfazedTaskiqSettings
@@ -10,9 +10,15 @@ TEMP_SETTINGS = {
         "BACKEND": "taskiq.InMemoryBroker",
         "OPTIONS": {},
     },
+    "RESULT": {
+        "BACKEND": "taskiq_redis.RedisAsyncResultBackend",
+        "OPTIONS": {
+            "redis_url": "redis://redis:6379",
+        },
+    },
     "SCHEDULER": {
         "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "OPTIONS": {},
+        "SOURCES_CLS": ["taskiq.schedule_sources.LabelScheduleSource"],
     },
 }
 
@@ -20,16 +26,11 @@ TEMP_SETTINGS = {
 async def test_agent() -> None:
     agent = TaskiqAgent()
 
-    with pytest.raises(ValueError):
-        _ = agent.broker
-
-    with pytest.raises(ValueError):
-        _ = agent.scheduler
-
     settings = UnfazedTaskiqSettings.model_validate(TEMP_SETTINGS)
     agent.setup(settings)
 
     assert isinstance(agent.broker, InMemoryBroker)
+    assert isinstance(agent.broker.result_backend, RedisAsyncResultBackend)
     assert isinstance(agent.scheduler, TaskiqScheduler)
 
     await agent.startup()
