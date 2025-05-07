@@ -34,6 +34,9 @@ def test_cli(setup_cli: t.Generator[None, None, None]) -> None:
     assert isinstance(agent.broker.result_backend, RedisAsyncResultBackend)
     assert isinstance(agent.scheduler, TaskiqScheduler)
 
+    agent.reset()
+    assert agent.scheduler is not None
+
 
 def test_cli_without_env() -> None:
     if "UNFAZED_SETTINGS_MODULE" in os.environ:
@@ -48,4 +51,7 @@ def test_cli_without_scheduler(setup_cli2: t.Generator[None, None, None]) -> Non
 
     assert isinstance(agent.broker, InMemoryBroker)
     assert isinstance(agent.broker.result_backend, RedisAsyncResultBackend)
+    assert agent.scheduler is None
+
+    agent.reset()
     assert agent.scheduler is None
