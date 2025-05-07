@@ -18,6 +18,15 @@ def setup_cli() -> t.Generator[None, None, None]:
     del os.environ["UNFAZED_SETTINGS_MODULE"]
 
 
+@pytest.fixture(autouse=True)
+def setup_settings() -> t.Generator:
+    from unfazed.conf import settings
+
+    settings.clear()
+
+    yield
+
+
 @pytest.fixture
 def setup_cli2() -> t.Generator[None, None, None]:
     os.environ["UNFAZED_SETTINGS_MODULE"] = "tests.proj.entry2.settings"

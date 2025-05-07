@@ -35,7 +35,6 @@ class TaskiqAgent:
         self._ready = False
 
     def setup_from_property(self) -> None:
-        settings.clear()
         taskiq_settings: UnfazedTaskiqSettings = settings["UNFAZED_TASKIQ_SETTINGS"]
         self.setup(taskiq_settings)
 
