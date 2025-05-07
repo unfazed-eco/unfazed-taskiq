@@ -29,6 +29,11 @@ class TaskiqAgent:
         if not self._ready:
             self.setup_from_property()
 
+    def reset(self) -> None:
+        self._broker = None
+        self._scheduler = None
+        self._ready = False
+
     def setup_from_property(self) -> None:
         taskiq_settings: UnfazedTaskiqSettings = settings["UNFAZED_TASKIQ_SETTINGS"]
         self.setup(taskiq_settings)
@@ -63,6 +68,8 @@ class TaskiqAgent:
                 sources.append(source_cls(self._broker))  # type: ignore
 
             self._scheduler = scheduler_cls(self._broker, sources)
+        else:
+            self._scheduler = None
 
         self._ready = True
 

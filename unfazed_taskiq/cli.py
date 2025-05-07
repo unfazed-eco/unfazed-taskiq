@@ -2,7 +2,7 @@ import os
 
 from unfazed.utils import import_setting
 
-from .base import TaskiqAgent
+from .base import TaskiqAgent, agent
 from .settings import UnfazedTaskiqSettings
 
 
@@ -26,7 +26,7 @@ def get_agent() -> TaskiqAgent:
 
     settings = UnfazedTaskiqSettings.model_validate(taskiq_settings)
 
-    agent = TaskiqAgent()
+    agent.reset()
     agent.setup(settings)
 
     return agent

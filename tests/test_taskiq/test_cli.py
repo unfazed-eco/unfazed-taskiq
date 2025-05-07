@@ -18,6 +18,15 @@ def setup_cli() -> t.Generator[None, None, None]:
     del os.environ["UNFAZED_SETTINGS_MODULE"]
 
 
+@pytest.fixture(autouse=True)
+def setup_settings() -> t.Generator:
+    from unfazed.conf import settings
+
+    settings.clear()
+
+    yield
+
+
 @pytest.fixture
 def setup_cli2() -> t.Generator[None, None, None]:
     os.environ["UNFAZED_SETTINGS_MODULE"] = "tests.proj.entry2.settings"
@@ -34,6 +43,9 @@ def test_cli(setup_cli: t.Generator[None, None, None]) -> None:
     assert isinstance(agent.broker.result_backend, RedisAsyncResultBackend)
     assert isinstance(agent.scheduler, TaskiqScheduler)
 
+    agent.reset()
+    assert agent.scheduler is not None
+
 
 def test_cli_without_env() -> None:
     if "UNFAZED_SETTINGS_MODULE" in os.environ:
@@ -48,4 +60,7 @@ def test_cli_without_scheduler(setup_cli2: t.Generator[None, None, None]) -> Non
 
     assert isinstance(agent.broker, InMemoryBroker)
     assert isinstance(agent.broker.result_backend, RedisAsyncResultBackend)
+    assert agent.scheduler is None
+
+    agent.reset()
     assert agent.scheduler is None
