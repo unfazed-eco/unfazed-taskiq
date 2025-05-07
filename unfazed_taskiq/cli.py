@@ -2,7 +2,7 @@ import os
 
 from unfazed.utils import import_setting
 
-from .base import agent, TaskiqAgent
+from .base import TaskiqAgent, agent
 from .settings import UnfazedTaskiqSettings
 
 

@@ -29,7 +29,7 @@ class TaskiqAgent:
         if not self._ready:
             self.setup_from_property()
 
-    def reset(self):
+    def reset(self) -> None:
         self._broker = None
         self._scheduler = None
         self._ready = False
