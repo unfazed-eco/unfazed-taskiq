@@ -1,5 +1,7 @@
 import os
 
+from taskiq_redis import ListRedisScheduleSource
+
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 
 UNFAZED_SETTINGS = {
@@ -8,6 +10,8 @@ UNFAZED_SETTINGS = {
     "INSTALLED_APPS": ["app1"],
 }
 
+
+redis_resource = ListRedisScheduleSource(url=f"redis://{REDIS_HOST}:6379")
 
 UNFAZED_TASKIQ_SETTINGS = {
     "BROKER": {
@@ -22,6 +26,6 @@ UNFAZED_TASKIQ_SETTINGS = {
     },
     "SCHEDULER": {
         "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "SOURCES_CLS": ["taskiq.schedule_sources.LabelScheduleSource"],
+        "SOURCES": ["taskiq.schedule_sources.LabelScheduleSource", redis_resource],
     },
 }
