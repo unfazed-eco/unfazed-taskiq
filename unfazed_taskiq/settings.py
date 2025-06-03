@@ -1,6 +1,7 @@
 import typing as t
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from taskiq import ScheduleSource
 from unfazed.conf import register_settings
 
 
@@ -16,7 +17,11 @@ class Result(BaseModel):
 
 class Scheduler(BaseModel):
     backend: str = Field(alias="BACKEND")
-    sources_cls: t.Optional[t.List[str]] = Field(default=None, alias="SOURCES_CLS")
+    sources: t.Optional[t.List[t.Union[str, ScheduleSource]]] = Field(
+        default=None, alias="SOURCES"
+    )
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @register_settings("UNFAZED_TASKIQ_SETTINGS")

@@ -22,7 +22,7 @@ TEMP_SETTINGS = {
     },
     "SCHEDULER": {
         "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "SOURCES_CLS": ["taskiq.schedule_sources.LabelScheduleSource"],
+        "SOURCES": ["taskiq.schedule_sources.LabelScheduleSource"],
     },
 }
 

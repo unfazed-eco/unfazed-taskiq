@@ -18,6 +18,10 @@ Quick Start
 Add settings to your unfazed settings file:
 
 ```python
+
+from taskiq_redis import ListRedisScheduleSource
+redis_resource = ListRedisScheduleSource(url=f"redis://{REDIS_HOST}:6379")
+
 # entry/settings.py
 UNFAZED_TASKIQ_SETTINGS = {
     "BROKER": {
@@ -30,9 +34,10 @@ UNFAZED_TASKIQ_SETTINGS = {
             "redis_url": "redis://redis:6379",
         },
     },
+    # Sources can be a list of strings or ScheduleSource instances
     "SCHEDULER": {
         "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "SOURCES_CLS": ["taskiq.schedule_sources.LabelScheduleSource"],
+        "SOURCES": ["taskiq.schedule_sources.LabelScheduleSource", redis_resource],
     },
 }
 
@@ -44,6 +49,8 @@ UNFAZED_SETTINGS = {
 ```
 
 Use UnfazedTaskiqAgent in your app's `tasks.py`:
+
+> Note: Sources can be a list of strings or ScheduleSource instances, when it's a string, it will be imported and instantiated with args `broker` from `BROKER` in settings.
 
 ```python
 # app/tasks.py

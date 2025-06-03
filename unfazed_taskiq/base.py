@@ -1,7 +1,6 @@
 import typing as t
 
-from taskiq import AsyncBroker, TaskiqScheduler
-from taskiq.abc.schedule_source import ScheduleSource
+from taskiq import AsyncBroker, ScheduleSource, TaskiqScheduler
 from unfazed.conf import settings
 from unfazed.utils import import_string
 
@@ -58,16 +57,17 @@ class TaskiqAgent:
             scheduler_cls: t.Type[TaskiqScheduler] = import_string(
                 taskiq_settings.scheduler.backend
             )
-            scheduler_sources_cls = taskiq_settings.scheduler.sources_cls or []
+            scheduler_sources = taskiq_settings.scheduler.sources or []
 
             sources: t.List[ScheduleSource] = []
-            source_cls: t.Type[ScheduleSource]
-            for source_cls_str in scheduler_sources_cls:
-                source_cls = import_string(source_cls_str)
+            for source in scheduler_sources:
+                if isinstance(source, ScheduleSource):
+                    sources.append(source)
+                else:
+                    source_cls = import_string(source)
+                    sources.append(source_cls(self._broker))
 
-                sources.append(source_cls(self._broker))  # type: ignore
-
-            self._scheduler = scheduler_cls(self._broker, sources)
+            self._scheduler = scheduler_cls(broker=self._broker, sources=sources)
         else:
             self._scheduler = None
 
