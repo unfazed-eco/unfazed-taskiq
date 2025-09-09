@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "taskiq>=0.11.16",
     "taskiq-aio-pika>=0.4.2",
-    "unfazed>=0.0.8",
+    "unfazed==0.0.15",
 ]
 
 
