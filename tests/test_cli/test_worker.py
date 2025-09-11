@@ -6,22 +6,18 @@ from unfazed_taskiq.cli.worker.cmd import WorkerCMD
 
 
 class TestWorkerCMD(object):
-    @pytest.mark.asyncio
-    async def test_init_unfazed(self):
+    def test_init_unfazed(self):
         """Test init_unfazed method."""
         cmd = WorkerCMD()
 
         with patch("unfazed_taskiq.cli.worker.cmd.Unfazed") as mock_unfazed:
             mock_unfazed_instance = Mock()
-            # Make setup method return a coroutine
-            async def mock_setup():
-                pass
-            mock_unfazed_instance.setup = Mock(return_value=mock_setup())
+            mock_unfazed_instance.setup = AsyncMock(return_value=None)
             mock_unfazed.return_value = mock_unfazed_instance
 
             # Test the async method using asyncio.run
             # Create a new event loop to avoid conflicts
-            await cmd.init_unfazed()
+            asyncio.run(cmd.init_unfazed())
 
             # Verify Unfazed was instantiated
             mock_unfazed.assert_called_once()
