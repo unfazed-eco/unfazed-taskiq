@@ -83,9 +83,9 @@ class PeriodicTask(BaseModel):
     def to_taskiq_schedule_task(self):
         base_data = {
             "task_name": self.task_name,
-            "args": json.loads(self.task_args),
-            "kwargs": json.loads(self.task_kwargs),
-            "labels": json.loads(self.labels),
+            "args": json.loads(self.task_args.encode()),
+            "kwargs": json.loads(self.task_kwargs.encode()),
+            "labels": json.loads(self.labels.encode()),
             "schedule_id": self.schedule_id,
         }
 

@@ -1,3 +1,4 @@
+import orjson as json
 import logging
 import typing as t
 from datetime import datetime
@@ -102,9 +103,9 @@ class TortoiseScheduleSource(ScheduleSource):
 
         pt = m.PeriodicTask(
             task_name=schedule.task_name,
-            task_args=schedule.args,
-            task_kwargs=schedule.kwargs,
-            labels=schedule.labels,
+            task_args=json.dumps(schedule.args).decode(),
+            task_kwargs=json.dumps(schedule.kwargs).decode(),
+            labels=json.dumps(schedule.labels).decode(),
             schedule_id=schedule_id,
             schedule_alias=self.schedule_alias,
         )

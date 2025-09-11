@@ -5,7 +5,7 @@ from unfazed_taskiq.contrib.scheduler.sources import TortoiseScheduleSource
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 
 UNFAZED_SETTINGS = {
-    "LIFESPAN": ["unfazed_taskiq.lifespan.TaskiqLifeSpan"],
+    "LIFESPAN": [],
     "ROOT_URLCONF": "tests.proj.entry.routes",
     "INSTALLED_APPS": ["tests.proj.app1", "unfazed_taskiq.contrib.scheduler"],
     "DATABASE": {
@@ -17,7 +17,7 @@ UNFAZED_SETTINGS = {
                     "PORT": os.getenv("MYSQL_PORT", 3306),
                     "USER": os.getenv("MYSQL_USER", "root"),
                     "PASSWORD": os.getenv("MYSQL_PASSWORD", "app"),
-                    "DATABASE": "app",
+                    "DATABASE": "test_app",
                 },
             },
         },
@@ -57,12 +57,8 @@ UNFAZED_TASKIQ_SETTINGS = {
     "TASKIQ_CONFIG": {
         default_taskiq_name: {
             "BROKER": {
-                "BACKEND": "taskiq_aio_pika.AioPikaBroker",
-                "OPTIONS": {
-                    "url": AMQP_URL,
-                    "exchange_name": default_taskiq_name,
-                    "queue_name": default_taskiq_name,
-                },
+                "BACKEND": "taskiq.InMemoryBroker",
+                "OPTIONS": {},
             },
             "SCHEDULER": {
                 "SOURCES": [source],

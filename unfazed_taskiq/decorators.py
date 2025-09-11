@@ -10,15 +10,25 @@ from unfazed_taskiq.registry import rs
 from unfazed_taskiq.schema.registry import RegistryTask, RegistryTaskParam
 
 
-def task(broker_name: Optional[str] = None, **task_kwargs: Any) -> Callable:
+def task(
+    func: Optional[Callable] = None,
+    *,
+    broker_name: Optional[str] = None,
+    **task_kwargs: Any,
+) -> Callable:
     """
     use taskiq decorator to decorate task
 
     Args:
+        func: function to decorate (when used without parentheses)
         broker_name: broker name, if None, use default broker
         **task_kwargs: other arguments for taskiq task decorator
 
     Example:
+        @task
+        async def simple_task():
+            pass
+
         @task(broker_name="high_priority")
         async def high_priority_task():
             pass
@@ -28,7 +38,7 @@ def task(broker_name: Optional[str] = None, **task_kwargs: Any) -> Callable:
             pass
     """
 
-    def register_borker(
+    def register_broker(
         func: Callable,
         broker_name: str,
         **kwargs: Any,
@@ -55,7 +65,7 @@ def task(broker_name: Optional[str] = None, **task_kwargs: Any) -> Callable:
             name=func.__name__,
             broker_name=broker_name,
             params=params_info,
-            docs=func.__doc__,
+            docs=func.__doc__ or "",
             schedule=task_kwargs.get("schedule", None),
         )
 
@@ -74,9 +84,11 @@ def task(broker_name: Optional[str] = None, **task_kwargs: Any) -> Callable:
             agent._default_taskiq_name if broker_name is None else broker_name
         )
 
-        register_borker(func, real_broker_name, **task_kwargs)
+        register_broker(func, real_broker_name, **task_kwargs)
 
         # decorate task
         return broker.task(**task_kwargs)(func)
 
-    return decorator
+
+    # Support @task and @task()
+    return decorator if func is None else decorator(func)
