@@ -1,12 +1,12 @@
 import asyncio
-import pytest
-from typing import Optional, Sequence
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from typing import Any, Optional
+from unittest.mock import AsyncMock, Mock, patch
+
 from unfazed_taskiq.cli.worker.cmd import WorkerCMD
 
 
 class TestWorkerCMD(object):
-    def test_init_unfazed(self):
+    def test_init_unfazed(self) -> None:
         """Test init_unfazed method."""
         cmd = WorkerCMD()
 
@@ -26,7 +26,7 @@ class TestWorkerCMD(object):
             # Verify unfazed attribute was set
             assert cmd.unfazed == mock_unfazed_instance
 
-    def test_exec_success(self):
+    def test_exec_success(self) -> None:
         """Test exec method with successful execution."""
         cmd = WorkerCMD()
         args = ["test_broker", "test_module"]
@@ -37,14 +37,13 @@ class TestWorkerCMD(object):
             patch("unfazed_taskiq.cli.worker.cmd.sentry_agent") as mock_sentry_agent,
             patch("unfazed_taskiq.cli.worker.cmd.run_worker") as mock_run_worker,
         ):
-
             # Setup mocks
             mock_worker_args_instance = Mock()
             mock_worker_args.from_cli.return_value = mock_worker_args_instance
             mock_run_worker.return_value = 0
-            
+
             # Mock asyncio.run to properly handle coroutines
-            def mock_asyncio_run_func(coro):
+            def mock_asyncio_run_func(coro: Any) -> Any:
                 if asyncio.iscoroutine(coro):
                     # Create a new event loop and run the coroutine
                     loop = asyncio.new_event_loop()
@@ -54,11 +53,11 @@ class TestWorkerCMD(object):
                     finally:
                         loop.close()
                 return coro
-            
+
             mock_asyncio_run.side_effect = mock_asyncio_run_func
 
             # Call exec
-            result = cmd.exec(args)
+            result: Optional[int] = cmd.exec(args)
 
             # Verify calls
             mock_asyncio_run.assert_called_once()

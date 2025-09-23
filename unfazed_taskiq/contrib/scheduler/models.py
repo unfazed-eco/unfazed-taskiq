@@ -1,8 +1,8 @@
 import uuid
 
+import orjson as json
 from taskiq import ScheduledTask
 from tortoise import fields, models
-import orjson as json
 
 
 class BaseModel(models.Model):
@@ -17,7 +17,7 @@ class BaseModel(models.Model):
 class PeriodicTask(BaseModel):
     class Meta:
         table = "unfazed_taskiq_periodic_task"
-    
+
     schedule_alias = fields.CharField(
         max_length=255,
         description="The alias of the schedule.",
@@ -80,7 +80,7 @@ class PeriodicTask(BaseModel):
         unique=True,
     )
 
-    def to_taskiq_schedule_task(self):
+    def to_taskiq_schedule_task(self) -> ScheduledTask:
         base_data = {
             "task_name": self.task_name,
             "args": json.loads(self.task_args.encode()),

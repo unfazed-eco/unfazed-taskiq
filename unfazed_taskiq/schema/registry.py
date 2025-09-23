@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Any, Optional
+
+from pydantic import BaseModel
 
 
 class RegistryTaskParam(BaseModel):
@@ -11,7 +12,7 @@ class RegistryTaskParam(BaseModel):
 
 class RegistryTask(BaseModel):
     name: str
-    broker_name: str
+    broker_name: Optional[str]
     params: list[RegistryTaskParam]
     docs: Optional[str]
     schedule: Optional[list[dict[str, Any]]]

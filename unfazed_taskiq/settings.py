@@ -3,8 +3,8 @@ import typing as t
 
 from pydantic import BaseModel, ConfigDict, Field
 from taskiq import ScheduleSource
-from unfazed.conf import register_settings
 from taskiq.events import TaskiqEvents
+from unfazed.conf import register_settings
 
 
 class Broker(BaseModel):

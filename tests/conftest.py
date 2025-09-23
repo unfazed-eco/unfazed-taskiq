@@ -1,7 +1,9 @@
-import os
 import logging
+import os
 import sys
 import typing as t
+import uuid
+from datetime import datetime
 
 import pytest
 from pytest import Item
@@ -10,20 +12,10 @@ from tortoise import Tortoise
 from tortoise.connection import connections
 from unfazed.core import Unfazed
 
-from datetime import datetime
-import os
-import sys
-import typing as t
-import uuid
-
-import pytest
-from unfazed.core import Unfazed
-
 from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
 
-
-
 logger = logging.getLogger(__name__)
+
 
 # dont need decorate test functions with pytest.mark.asyncio
 def pytest_collection_modifyitems(items: t.List[Item]) -> None:
@@ -55,10 +47,9 @@ async def unfazed() -> t.AsyncGenerator[Unfazed, None]:
     await Tortoise._drop_databases()
 
 
-
 @pytest.fixture()
-async def test_scheduler_sample_data():
-    data = [
+async def test_scheduler_sample_data() -> t.Any:
+    data: list[dict] = [
         {
             "description": "test_task1",
             "task_args": "[]",

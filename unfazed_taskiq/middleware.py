@@ -1,6 +1,6 @@
 import logging
 import traceback
-from typing import Any, Dict
+from typing import Any
 
 from taskiq import TaskiqMessage, TaskiqResult
 from taskiq.abc.middleware import TaskiqMiddleware
@@ -10,7 +10,6 @@ logger = logging.getLogger("unfazed_taskiq")
 
 
 class UnfazedTaskiqExceptionMiddleware(TaskiqMiddleware):
-
     async def on_error(
         self,
         message: "TaskiqMessage",

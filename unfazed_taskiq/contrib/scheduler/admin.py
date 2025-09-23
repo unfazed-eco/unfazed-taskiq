@@ -6,4 +6,4 @@ from . import serializer as s
 @register(s.PeriodicTaskSerializer)
 class PeriodicTaskAdmin(ModelAdmin):
     route_label = "TaskIQ"
-    component="ModelAdmin"
+    component = "ModelAdmin"

@@ -1,21 +1,17 @@
 import asyncio
-import copy
-from math import log
 import traceback
-from typing import Sequence
 from dataclasses import replace
-from taskiq import task
+from logging import getLogger
+from typing import Sequence
+
 from taskiq.abc.cmd import TaskiqCMD
 from taskiq.cli.scheduler.run import run_scheduler
 from unfazed.core import Unfazed
-from importlib import import_module
-
 from unfazed_sentry import capture_exception
-from unfazed_taskiq.base import TaskiqAgent
-from unfazed_taskiq.agent import get_agent
 
+from unfazed_taskiq.agent import get_agent
+from unfazed_taskiq.base import TaskiqAgent
 from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
-from logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -46,7 +42,7 @@ class SchedulerCMD(TaskiqCMD):
         # setup scheduler
         parsed: SchedulerEventArgs = SchedulerEventArgs.from_cli(args)
 
-        async def _run_all_scheduler():
+        async def _run_all_scheduler() -> None:
             agent: TaskiqAgent = get_agent()
             tasks = []
             try:

@@ -1,14 +1,16 @@
-import orjson as json
 import logging
 import typing as t
 from datetime import datetime
-from unfazed.utils import import_string
+
+import orjson as json
 from taskiq import ScheduledTask, ScheduleSource
 from taskiq.abc.serializer import TaskiqSerializer
+from taskiq.utils import maybe_awaitable
 from tortoise import BaseDBAsyncClient, Tortoise
 from tortoise.expressions import F
-from taskiq.utils import maybe_awaitable
 from unfazed.conf import UnfazedSettings, settings
+from unfazed.utils import import_string
+
 from . import models as m
 
 logger = logging.getLogger("unfazed_taskiq")
@@ -134,10 +136,9 @@ class TortoiseScheduleSource(ScheduleSource):
             .update(enabled=0)
         )
 
-    async def pre_send(
-        self,
-        task: "ScheduledTask",
-    ) -> t.Union[
+    async def pre_send(  # type: ignore
+        self, task: "ScheduledTask"
+    ) -> t.Union[  # type: ignore
         None, "t.CoroutineType[t.Any, t.Any, None]", t.Coroutine[t.Any, t.Any, None]
     ]:
         """
@@ -154,10 +155,9 @@ class TortoiseScheduleSource(ScheduleSource):
             .update(last_run_at=datetime.now())
         )
 
-    async def post_send(
-        self,
-        task: "ScheduledTask",
-    ) -> t.Union[
+    async def post_send(  # type: ignore
+        self, task: "ScheduledTask"
+    ) -> t.Union[  # type: ignore
         None, "t.CoroutineType[t.Any, t.Any, None]", t.Coroutine[t.Any, t.Any, None]
     ]:
         """

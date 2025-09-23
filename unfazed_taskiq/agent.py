@@ -1,12 +1,11 @@
 import os
 from typing import Optional
 
-from unfazed.utils import import_setting
 from taskiq import AsyncBroker, TaskiqScheduler
+from unfazed.utils import import_setting
 
 from .base import TaskiqAgent, agent
 from .settings import UnfazedTaskiqSettings
-
 
 _agent: Optional[TaskiqAgent] = None
 

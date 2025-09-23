@@ -22,26 +22,26 @@ UNFAZED_SETTINGS = {
             },
         },
     },
-    "LOGGING": {
-        "formatters": {
-            "taskiq_format": {
-                "format": "[%(asctime)s][%(levelname)-7s] [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
-            },
-        },
-        "handlers": {
-            "_console": {
-                "class": "logging.StreamHandler",
-                "level": "DEBUG",
-                "formatter": "taskiq_format",
-            }
-        },
-        "loggers": {
-            "taskiq": {
-                "handlers": ["_console"],
-                "level": "INFO",
-            },
-        },
-    },
+    # "LOGGING": {
+    #     "formatters": {
+    #         "taskiq_format": {
+    #             "format": "[%(asctime)s][%(levelname)-7s] [%(module)s:%(funcName)s:%(lineno)d] %(message)s"
+    #         },
+    #     },
+    #     "handlers": {
+    #         "_console": {
+    #             "class": "logging.StreamHandler",
+    #             "level": "DEBUG",
+    #             "formatter": "taskiq_format",
+    #         }
+    #     },
+    #     "loggers": {
+    #         "taskiq": {
+    #             "handlers": ["_console"],
+    #             "level": "INFO",
+    #         },
+    #     },
+    # },
 }
 
 

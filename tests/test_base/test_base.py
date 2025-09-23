@@ -6,6 +6,7 @@ covering core functionality: initialization, setup, broker/scheduler operations,
 """
 
 import os
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -14,17 +15,19 @@ from taskiq.scheduler.scheduler import TaskiqScheduler
 from taskiq_redis import RedisAsyncResultBackend
 
 from unfazed_taskiq.base import TaskiqAgent
-from unfazed_taskiq.settings import UnfazedTaskiqSettings
 from unfazed_taskiq.contrib.scheduler.sources import TortoiseScheduleSource
+from unfazed_taskiq.settings import UnfazedTaskiqSettings
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_agent():
+async def cleanup_agent() -> Any:
     """Cleanup agent after each test to prevent connection leaks."""
     yield
     # Reset the singleton agent after each test
     from unfazed_taskiq.base import agent
+
     agent.reset()
+
 
 # Test configuration constants
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
@@ -35,7 +38,7 @@ class TestTaskiqAgent:
     """Test TaskiqAgent core functionality."""
 
     @pytest.fixture
-    def base_settings(self):
+    def base_settings(self) -> dict:
         """Base settings for single broker tests."""
         source = TortoiseScheduleSource(schedule_alias="default")
         return {
@@ -70,7 +73,7 @@ class TestTaskiqAgent:
         assert agent._default_taskiq_name is None
         assert agent._taskiq_configs == {}
 
-    def test_setup_basic(self, base_settings) -> None:
+    def test_setup_basic(self, base_settings: dict) -> None:
         """Test basic setup functionality."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -94,7 +97,7 @@ class TestTaskiqAgent:
         with pytest.raises(ValueError, match="No taskiq configurations found"):
             agent.setup(empty_settings)
 
-    def test_setup_is_idempotent(self, base_settings) -> None:
+    def test_setup_is_idempotent(self, base_settings: dict) -> None:
         """Test setup is idempotent."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -110,7 +113,7 @@ class TestTaskiqAgent:
         assert first_broker_id == second_broker_id
         assert agent._ready is True
 
-    def test_get_broker_with_name(self, base_settings) -> None:
+    def test_get_broker_with_name(self, base_settings: dict) -> None:
         """Test get broker with specific name."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -121,7 +124,7 @@ class TestTaskiqAgent:
         assert isinstance(broker, InMemoryBroker)
         assert broker is agent._brokers["default"]
 
-    def test_get_broker_without_name_uses_default(self, base_settings) -> None:
+    def test_get_broker_without_name_uses_default(self, base_settings: dict) -> None:
         """Test get broker without name uses default."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -132,7 +135,7 @@ class TestTaskiqAgent:
         assert isinstance(broker, InMemoryBroker)
         assert broker is agent._brokers["default"]
 
-    def test_get_broker_no_default_raises_error(self, base_settings) -> None:
+    def test_get_broker_no_default_raises_error(self, base_settings: dict) -> None:
         """Test get broker without default raises error."""
         agent = TaskiqAgent()
         settings_data = base_settings.copy()
@@ -143,17 +146,16 @@ class TestTaskiqAgent:
         with pytest.raises(ValueError, match="No found broker name configured"):
             agent.get_broker()
 
-    def test_get_broker_invalid_name_returns_none(self, base_settings) -> None:
+    def test_get_broker_invalid_name_returns_none(self, base_settings: dict) -> None:
         """Test get broker with invalid name returns None."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
         agent.setup(settings)
 
-        broker = agent.get_broker("invalid")
+        with pytest.raises(ValueError, match="Broker 'invalid' not found"):
+            agent.get_broker("invalid")
 
-        assert broker is None
-
-    def test_get_scheduler_with_name(self, base_settings) -> None:
+    def test_get_scheduler_with_name(self, base_settings: dict) -> None:
         """Test get scheduler with specific name."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -164,7 +166,7 @@ class TestTaskiqAgent:
         assert isinstance(scheduler, TaskiqScheduler)
         assert scheduler is agent._schedulers["default"]
 
-    def test_get_scheduler_without_name_uses_default(self, base_settings) -> None:
+    def test_get_scheduler_without_name_uses_default(self, base_settings: dict) -> None:
         """Test get scheduler without name uses default."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -175,7 +177,7 @@ class TestTaskiqAgent:
         assert isinstance(scheduler, TaskiqScheduler)
         assert scheduler is agent._schedulers["default"]
 
-    def test_get_scheduler_no_default_raises_error(self, base_settings) -> None:
+    def test_get_scheduler_no_default_raises_error(self, base_settings: dict) -> None:
         """Test get scheduler without default raises error."""
         agent = TaskiqAgent()
         settings_data = base_settings.copy()
@@ -186,15 +188,14 @@ class TestTaskiqAgent:
         with pytest.raises(ValueError, match="No found scheduler name configured"):
             agent.get_scheduler()
 
-    def test_get_scheduler_invalid_name_returns_none(self, base_settings) -> None:
+    def test_get_scheduler_invalid_name_returns_none(self, base_settings: dict) -> None:
         """Test get scheduler with invalid name returns None."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
         agent.setup(settings)
 
-        scheduler = agent.get_scheduler("invalid")
-
-        assert scheduler is None
+        with pytest.raises(ValueError, match="Scheduler 'invalid' not found"):
+            agent.get_scheduler("invalid")
 
     def test_check_ready_calls_setup_when_not_ready(self) -> None:
         """Test check_ready calls setup when not ready."""
@@ -213,7 +214,7 @@ class TestTaskiqAgent:
             agent.check_ready()
             mock_setup.assert_not_called()
 
-    def test_reset(self, base_settings) -> None:
+    def test_reset(self, base_settings: dict) -> None:
         """Test reset functionality."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
@@ -225,10 +226,10 @@ class TestTaskiqAgent:
         assert len(agent._brokers) == 0
         assert len(agent._schedulers) == 0
 
-    def test_setup_from_property(self, base_settings) -> None:
+    def test_setup_from_property(self, base_settings: dict) -> None:
         """Test setup_from_property calls setup."""
         agent = TaskiqAgent()
-        
+
         with patch("unfazed.conf.settings") as mock_settings:
             mock_settings.__getitem__.return_value = base_settings
             with patch.object(agent, "setup") as mock_setup:
@@ -239,37 +240,37 @@ class TestTaskiqAgent:
                 assert isinstance(call_args, UnfazedTaskiqSettings)
 
     @pytest.mark.asyncio
-    async def test_startup(self, base_settings) -> None:
+    async def test_startup(self, base_settings: dict) -> None:
         """Test startup lifecycle method."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
         agent.setup(settings)
-        
+
         # Mock startup methods
         # In single broker test, broker startup is called through scheduler
         for scheduler in agent._schedulers.values():
             scheduler.startup = AsyncMock()  # type: ignore
-        
+
         await agent.startup()
-        
+
         # Verify scheduler startup was called (which will call broker startup)
         for scheduler in agent._schedulers.values():
             scheduler.startup.assert_called_once()  # type: ignore
 
     @pytest.mark.asyncio
-    async def test_shutdown(self, base_settings) -> None:
+    async def test_shutdown(self, base_settings: dict) -> None:
         """Test shutdown lifecycle method."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(base_settings)
         agent.setup(settings)
-        
+
         # Mock shutdown methods
         # In single broker test, broker shutdown is called through scheduler
         for scheduler in agent._schedulers.values():
             scheduler.shutdown = AsyncMock()  # type: ignore
-        
+
         await agent.shutdown()
-        
+
         # Verify scheduler shutdown was called (which will call broker shutdown)
         for scheduler in agent._schedulers.values():
             scheduler.shutdown.assert_called_once()  # type: ignore
@@ -290,7 +291,7 @@ class TestTaskiqAgentMultiBroker:
     """Test TaskiqAgent with multiple brokers."""
 
     @pytest.fixture
-    def multi_broker_settings(self):
+    def multi_broker_settings(self) -> dict:
         """Multi-broker settings for testing multiple broker scenarios."""
         source = TortoiseScheduleSource(schedule_alias="default")
         return {
@@ -339,142 +340,151 @@ class TestTaskiqAgentMultiBroker:
             },
         }
 
-    def test_setup_multiple_brokers(self, multi_broker_settings) -> None:
+    def test_setup_multiple_brokers(self, multi_broker_settings: dict) -> None:
         """Test setup with multiple brokers."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
-        
+
         agent.setup(settings)
-        
+
         assert agent._ready is True
         assert agent._default_taskiq_name == "default"
         assert len(agent._brokers) == 3
         assert "default" in agent._brokers
         assert "high_priority" in agent._brokers
         assert "low_priority" in agent._brokers
-        
+
         # Verify all brokers are InMemoryBroker instances
         for broker in agent._brokers.values():
             assert isinstance(broker, InMemoryBroker)
 
-    def test_get_different_brokers(self, multi_broker_settings) -> None:
+    def test_get_different_brokers(self, multi_broker_settings: dict) -> None:
         """Test getting different brokers by name."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         default_broker = agent.get_broker("default")
         high_priority_broker = agent.get_broker("high_priority")
         low_priority_broker = agent.get_broker("low_priority")
-        
+
         # Verify all brokers are different instances
         assert isinstance(default_broker, InMemoryBroker)
         assert isinstance(high_priority_broker, InMemoryBroker)
         assert isinstance(low_priority_broker, InMemoryBroker)
-        
+
         assert default_broker is not high_priority_broker
         assert default_broker is not low_priority_broker
         assert high_priority_broker is not low_priority_broker
 
-    def test_get_default_broker_without_name(self, multi_broker_settings) -> None:
+    def test_get_default_broker_without_name(self, multi_broker_settings: dict) -> None:
         """Test getting default broker without specifying name."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         default_broker = agent.get_broker()
-        
+
         assert isinstance(default_broker, InMemoryBroker)
         assert default_broker is agent._brokers["default"]
 
-    def test_get_invalid_broker_returns_none(self, multi_broker_settings) -> None:
+    def test_get_invalid_broker_returns_none(self, multi_broker_settings: dict) -> None:
         """Test getting invalid broker name returns None."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
-        invalid_broker = agent.get_broker("invalid_broker")
-        
-        assert invalid_broker is None
 
-    def test_scheduler_only_on_default_queue(self, multi_broker_settings) -> None:
+        with pytest.raises(ValueError, match="Broker 'invalid_broker' not found"):
+            agent.get_broker("invalid_broker")
+
+    def test_scheduler_only_on_default_queue(self, multi_broker_settings: dict) -> None:
         """Test that scheduler is only configured for default queue."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         default_scheduler = agent.get_scheduler("default")
-        high_priority_scheduler = agent.get_scheduler("high_priority")
-        low_priority_scheduler = agent.get_scheduler("low_priority")
-        
+        with pytest.raises(ValueError, match="Scheduler 'high_priority' not found"):
+            agent.get_scheduler("high_priority")
+        with pytest.raises(ValueError, match="Scheduler 'low_priority' not found"):
+            agent.get_scheduler("low_priority")
+
         # Only default queue should have scheduler
         assert isinstance(default_scheduler, TaskiqScheduler)
-        assert high_priority_scheduler is None
-        assert low_priority_scheduler is None
 
-    def test_broker_isolation(self, multi_broker_settings) -> None:
+    def test_broker_isolation(self, multi_broker_settings: dict) -> None:
         """Test that brokers are isolated from each other."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         default_broker = agent.get_broker("default")
         high_priority_broker = agent.get_broker("high_priority")
-        
+
         # Verify brokers have different configurations
         assert default_broker is not high_priority_broker
-        
+
         # Verify they have different queue names (if accessible)
-        # Note: InMemoryBroker doesn't expose queue_name directly, 
+        # Note: InMemoryBroker doesn't expose queue_name directly,
         # but we can verify they are different instances
 
     @pytest.mark.asyncio
-    async def test_startup_multiple_brokers(self, multi_broker_settings) -> None:
+    async def test_startup_multiple_brokers(self, multi_broker_settings: dict) -> None:
         """Test startup with multiple brokers."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         # Mock startup methods for brokers without schedulers
-        with patch.object(agent._brokers["high_priority"], "startup", new_callable=AsyncMock) as high_mock, \
-             patch.object(agent._brokers["low_priority"], "startup", new_callable=AsyncMock) as low_mock:
-            
+        with (
+            patch.object(
+                agent._brokers["high_priority"], "startup", new_callable=AsyncMock
+            ) as high_mock,
+            patch.object(
+                agent._brokers["low_priority"], "startup", new_callable=AsyncMock
+            ) as low_mock,
+        ):
             await agent.startup()
-            
+
             # Verify brokers without schedulers startup was called exactly once
             # (default broker startup is called through scheduler)
             high_mock.assert_called_once()
             low_mock.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_shutdown_multiple_brokers(self, multi_broker_settings) -> None:
+    async def test_shutdown_multiple_brokers(self, multi_broker_settings: dict) -> None:
         """Test shutdown with multiple brokers."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         # Mock shutdown methods for brokers without schedulers
-        with patch.object(agent._brokers["high_priority"], "shutdown", new_callable=AsyncMock) as high_mock, \
-             patch.object(agent._brokers["low_priority"], "shutdown", new_callable=AsyncMock) as low_mock:
-            
+        with (
+            patch.object(
+                agent._brokers["high_priority"], "shutdown", new_callable=AsyncMock
+            ) as high_mock,
+            patch.object(
+                agent._brokers["low_priority"], "shutdown", new_callable=AsyncMock
+            ) as low_mock,
+        ):
             await agent.shutdown()
-            
+
             # Verify brokers without schedulers shutdown was called exactly once
             # (default broker shutdown is called through scheduler)
             high_mock.assert_called_once()
             low_mock.assert_called_once()
 
-    def test_reset_clears_all_brokers(self, multi_broker_settings) -> None:
+    def test_reset_clears_all_brokers(self, multi_broker_settings: dict) -> None:
         """Test reset clears all brokers."""
         agent = TaskiqAgent()
         settings = UnfazedTaskiqSettings.model_validate(multi_broker_settings)
         agent.setup(settings)
-        
+
         # Verify brokers exist before reset
         assert len(agent._brokers) == 3
-        
+
         agent.reset()
-        
+
         # Verify all brokers are cleared
         assert agent._ready is False
         assert len(agent._brokers) == 0

@@ -1,6 +1,5 @@
 import inspect
-from typing import Any, get_type_hints, Optional
-from typing import Callable
+from typing import Any, Callable, Optional, get_type_hints
 
 from taskiq import AsyncBroker
 
@@ -40,9 +39,9 @@ def task(
 
     def register_broker(
         func: Callable,
-        broker_name: str,
+        broker_name: Optional[str],
         **kwargs: Any,
-    ) -> RegistryTask:
+    ) -> Any:
         params_info: list[RegistryTaskParam] = []
         sig = inspect.signature(func)
         type_hints = get_type_hints(func)
@@ -74,21 +73,19 @@ def task(
         rs.register(task_path, registry_task)
 
     def decorator(func: Callable) -> Callable:
-
         # get agent & broker
         agent: TaskiqAgent = get_agent()
         broker: AsyncBroker = agent.get_broker(broker_name)
 
         # get real broker name
         real_broker_name: str = (
-            agent._default_taskiq_name if broker_name is None else broker_name
+            agent._default_taskiq_name if broker_name is None else broker_name  # type: ignore
         )
 
         register_broker(func, real_broker_name, **task_kwargs)
 
         # decorate task
         return broker.task(**task_kwargs)(func)
-
 
     # Support @task and @task()
     return decorator if func is None else decorator(func)

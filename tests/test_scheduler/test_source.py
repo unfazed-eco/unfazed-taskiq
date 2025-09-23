@@ -1,30 +1,32 @@
-from datetime import datetime
 import json
 import uuid
+from typing import Optional
+
 from taskiq import ScheduledTask
 from tortoise import Tortoise
+
 from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
 from unfazed_taskiq.contrib.scheduler.sources import TortoiseScheduleSource
 
 
-def test_startup_handler():
+def test_startup_handler() -> None:
     pass
 
 
-async def test_async_startup_handler():
+async def test_async_startup_handler() -> None:
     pass
 
 
-def test_shutdown_handler():
+def test_shutdown_handler() -> None:
     pass
 
 
-async def test_async_shutdown_handler():
+async def test_async_shutdown_handler() -> None:
     pass
 
 
 class TestTortoiseScheduleSource(object):
-    async def test_tortoise_schedule_source_init(self):
+    async def test_tortoise_schedule_source_init(self) -> None:
         """Test TortoiseScheduleSource initialization."""
         source = TortoiseScheduleSource(schedule_alias="test_task3")
         assert source is not None
@@ -33,7 +35,7 @@ class TestTortoiseScheduleSource(object):
         assert source.startup_handlers == []
         assert source.shutdown_handlers == []
 
-    async def test_tortoise_schedule_source_startup(self):
+    async def test_tortoise_schedule_source_startup(self) -> None:
         """Test TortoiseScheduleSource startup."""
         source = TortoiseScheduleSource(
             schedule_alias="test_task3",
@@ -46,7 +48,7 @@ class TestTortoiseScheduleSource(object):
         assert source.alias is not None
         assert source.alias == Tortoise.get_connection("default")
 
-    async def test_tortoise_schedule_source_shutdown(self):
+    async def test_tortoise_schedule_source_shutdown(self) -> None:
         """Test TortoiseScheduleSource shutdown."""
         source = TortoiseScheduleSource(
             schedule_alias="test_task3",
@@ -61,8 +63,8 @@ class TestTortoiseScheduleSource(object):
         assert source.alias == Tortoise.get_connection("default")
 
     async def test_tortoise_schedule_source_get_schedules(
-        self, test_scheduler_sample_data
-    ):
+        self, test_scheduler_sample_data: list[dict]
+    ) -> None:
         """Test TortoiseScheduleSource get schedules."""
         source = TortoiseScheduleSource(schedule_alias="test_schedule3")
         await source.startup()
@@ -85,8 +87,8 @@ class TestTortoiseScheduleSource(object):
         assert schedules[0].schedule_id == simple_data[0]["schedule_id"]
 
     async def test_tortoise_schedule_source_add_schedule(
-        self, test_scheduler_sample_data
-    ):
+        self, test_scheduler_sample_data: list[dict]
+    ) -> None:
         """Test TortoiseScheduleSource add schedule."""
         source = TortoiseScheduleSource(schedule_alias="test_schedule3")
         await source.startup()
@@ -106,8 +108,8 @@ class TestTortoiseScheduleSource(object):
         assert len(schedules) == 2
 
     async def test_tortoise_schedule_source_delete_schedule(
-        self, test_scheduler_sample_data
-    ):
+        self, test_scheduler_sample_data: list[dict]
+    ) -> None:
         """Test TortoiseScheduleSource delete schedule."""
         source = TortoiseScheduleSource(schedule_alias="test_schedule3")
         await source.startup()
@@ -125,7 +127,9 @@ class TestTortoiseScheduleSource(object):
         schedules = await source.get_schedules()
         assert len(schedules) == 0
 
-    async def test_tortoise_schedule_source_pre_send(self, test_scheduler_sample_data):
+    async def test_tortoise_schedule_source_pre_send(
+        self, test_scheduler_sample_data: list[dict]
+    ) -> None:
         """Test TortoiseScheduleSource pre send."""
         source = TortoiseScheduleSource(schedule_alias="test_schedule3")
         await source.startup()
@@ -151,10 +155,15 @@ class TestTortoiseScheduleSource(object):
         assert source.alias is not None
         assert source.alias == Tortoise.get_connection("default")
 
-        db_data = await PeriodicTask.filter(schedule_id=s_task.schedule_id).first()
-        assert origin_db_data.last_run_at != db_data.last_run_at
+        db_data: Optional[PeriodicTask] = await PeriodicTask.filter(
+            schedule_id=s_task.schedule_id
+        ).first()
+        assert db_data is not None
+        assert origin_db_data.last_run_at != db_data.last_run_at  # type: ignore
 
-    async def test_tortoise_schedule_source_post_send(self, test_scheduler_sample_data):
+    async def test_tortoise_schedule_source_post_send(
+        self, test_scheduler_sample_data: list[dict]
+    ) -> None:
         """Test TortoiseScheduleSource post send."""
         source = TortoiseScheduleSource(schedule_alias="test_schedule3")
         await source.startup()
@@ -173,13 +182,17 @@ class TestTortoiseScheduleSource(object):
             cron=result_scheduler[0]["cron"],
         )
 
-        origin_db_data = await PeriodicTask.filter(
+        origin_db_data: Optional[PeriodicTask] = await PeriodicTask.filter(
             schedule_id=s_task.schedule_id
         ).first()
+        assert origin_db_data is not None
 
         await source.post_send(s_task)
         assert source.alias is not None
         assert source.alias == Tortoise.get_connection("default")
 
-        db_data = await PeriodicTask.filter(schedule_id=s_task.schedule_id).first()
+        db_data: Optional[PeriodicTask] = await PeriodicTask.filter(
+            schedule_id=s_task.schedule_id
+        ).first()
+        assert db_data is not None
         assert origin_db_data.total_run_count + 1 == db_data.total_run_count

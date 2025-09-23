@@ -19,10 +19,10 @@ class SchedulerEventArgs(SchedulerArgs):
     tasks_pattern: Sequence[str] = ("**/tasks.py",)
     skip_first_run: bool = False
     update_interval: Optional[int] = None
-    scheduler_alias: Sequence[str]=()
+    scheduler_alias: Sequence[str] = ()
 
     @classmethod
-    def from_cli(cls, args: Optional[Sequence[str]] = None) -> "SchedulerArgs":
+    def from_cli(cls, args: Optional[Sequence[str]] = None) -> "SchedulerEventArgs":
         """
         Build scheduler args from CLI arguments.
 

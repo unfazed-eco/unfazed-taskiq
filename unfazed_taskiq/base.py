@@ -1,6 +1,7 @@
 import typing as t
 
 from taskiq import AsyncBroker, ScheduleSource, TaskiqScheduler
+from taskiq.events import TaskiqEvents
 from unfazed.conf import settings
 from unfazed.utils import import_string
 
@@ -22,7 +23,10 @@ class TaskiqAgent:
                 raise ValueError("No found broker name configured")
             broker_name = self._default_taskiq_name
 
-        return self._brokers.get(broker_name)
+        broker = self._brokers.get(broker_name)
+        if broker is None:
+            raise ValueError(f"Broker '{broker_name}' not found")
+        return broker
 
     def get_scheduler(self, scheduler_name: t.Optional[str] = None) -> TaskiqScheduler:
         self.check_ready()
@@ -31,7 +35,10 @@ class TaskiqAgent:
                 raise ValueError("No found scheduler name configured")
             scheduler_name = self._default_taskiq_name
 
-        return self._schedulers.get(scheduler_name)
+        scheduler = self._schedulers.get(scheduler_name)
+        if scheduler is None:
+            raise ValueError(f"Scheduler '{scheduler_name}' not found")
+        return scheduler
 
     def check_ready(self) -> None:
         if not self._ready:
@@ -75,7 +82,10 @@ class TaskiqAgent:
 
             for handler in queue_config.broker.handlers:
                 handler_cls = import_string(handler["handler"])
-                broker.add_event_handler(handler["event"], handler_cls)
+                event = handler["event"]
+                if isinstance(event, str):
+                    event = TaskiqEvents(event)
+                broker.add_event_handler(event, handler_cls)
 
             if queue_config.result:
                 result_cls = import_string(queue_config.result.backend)
@@ -105,7 +115,7 @@ class TaskiqAgent:
             if not isinstance(scheduler, TaskiqScheduler):
                 continue
             await scheduler.startup()
-        
+
         # Start brokers that don't have schedulers
         for broker_name, broker in self._brokers.items():
             if broker_name not in self._schedulers:
@@ -117,7 +127,7 @@ class TaskiqAgent:
             if not isinstance(scheduler, TaskiqScheduler):
                 continue
             await scheduler.shutdown()
-        
+
         # Shutdown brokers that don't have schedulers
         for broker_name, broker in self._brokers.items():
             if broker_name not in self._schedulers:

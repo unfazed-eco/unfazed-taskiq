@@ -1,14 +1,11 @@
 import asyncio
-import logging
 from typing import Optional, Sequence
 
 from taskiq.abc.cmd import TaskiqCMD
 from taskiq.cli.worker.args import WorkerArgs
 from taskiq.cli.worker.run import run_worker
-from unfazed_sentry import agent as sentry_agent
 from unfazed.core import Unfazed
-import asyncio
-import typing as t
+from unfazed_sentry import agent as sentry_agent
 
 
 class WorkerCMD(TaskiqCMD):

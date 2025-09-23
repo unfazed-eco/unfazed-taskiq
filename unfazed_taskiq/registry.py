@@ -1,4 +1,5 @@
 import typing as t
+
 from unfazed_taskiq.schema.registry import RegistryTask
 
 
@@ -20,7 +21,6 @@ class RegistryService(object):
             if keyword is None or keyword in k:
                 res.append(v)
         return res
-
 
 
 rs = RegistryService()
