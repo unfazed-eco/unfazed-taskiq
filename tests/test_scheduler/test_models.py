@@ -57,6 +57,52 @@ class TestPeriodicTaskModel(object):
             assert schedule_data.labels == json.loads(item["labels"])
             assert schedule_data.schedule_id == item["schedule_id"]
 
+    async def test_periodic_task_model_to_taskiq_schedule_task_with_time(self) -> None:
+        """Test to_taskiq_schedule_task method with time-based scheduling."""
+        from datetime import datetime, timezone
+        
+        # Create a PeriodicTask with time-based scheduling (no cron)
+        task_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        
+        periodic_task = await PeriodicTask.create(
+            task_name="test.time_task",
+            task_args='[]',
+            task_kwargs='{}',
+            labels='{}',
+            time=task_time,  # Set time instead of cron
+            cron=None,  # Explicitly set cron to None
+        )
+        
+        # Test the conversion
+        scheduled_task = periodic_task.to_taskiq_schedule_task()
+        
+        # Verify the scheduled task properties
+        assert scheduled_task.task_name == "test.time_task"
+        assert scheduled_task.args == []
+        assert scheduled_task.kwargs == {}
+        assert scheduled_task.labels == {}
+        assert scheduled_task.time == task_time
+        assert scheduled_task.cron is None
+        assert scheduled_task.schedule_id == periodic_task.schedule_id
+
+    async def test_periodic_task_model_to_taskiq_schedule_task_no_schedule_error(self) -> None:
+        """Test to_taskiq_schedule_task method raises RuntimeError when no schedule is found."""
+        import pytest
+        
+        # Create a PeriodicTask with neither cron nor time
+        periodic_task = await PeriodicTask.create(
+            task_name="test.no_schedule_task",
+            task_args='[]',
+            task_kwargs='{}',
+            labels='{}',
+            cron=None,
+            time=None,
+        )
+        
+        # Test that RuntimeError is raised
+        with pytest.raises(RuntimeError, match="No schedule found"):
+            periodic_task.to_taskiq_schedule_task()
+
 
 class TestPeriodicTaskSerializer(object):
     async def test_periodic_task_serializer(

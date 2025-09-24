@@ -78,6 +78,20 @@ class TestAgentModule:
                             mock_agent.setup.call_args[0][0], UnfazedTaskiqSettings
                         )
 
+    def test_get_agent_raises_error_when_settings_module_not_set(self) -> None:
+        """Test get_agent raises ValueError when UNFAZED_SETTINGS_MODULE is not set."""
+        # Arrange
+        with patch("unfazed_taskiq.agent._agent", None):
+            # Ensure UNFAZED_SETTINGS_MODULE is not in environment
+            with patch.dict(os.environ, {}, clear=True):
+                from unfazed_taskiq.agent import get_agent
+
+                # Act & Assert
+                with pytest.raises(
+                    ValueError, match="UNFAZED_SETTINGS_MODULE is not set"
+                ):
+                    get_agent()
+
     def test_get_agent_handles_import_setting_error(self) -> None:
         """Test get_agent handles import_setting errors gracefully."""
         # Arrange

@@ -7,10 +7,11 @@ covering core functionality: initialization, setup, broker/scheduler operations,
 
 import os
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from taskiq import InMemoryBroker
+from taskiq import InMemoryBroker, ScheduleSource
+from taskiq.events import TaskiqEvents
 from taskiq.scheduler.scheduler import TaskiqScheduler
 from taskiq_redis import RedisAsyncResultBackend
 
@@ -489,3 +490,321 @@ class TestTaskiqAgentMultiBroker:
         assert agent._ready is False
         assert len(agent._brokers) == 0
         assert len(agent._schedulers) == 0
+
+
+class TestTaskiqAgentEventHandlers:
+    """Test TaskiqAgent event handlers configuration."""
+
+    def test_event_handlers_with_string_event(self) -> None:
+        """Test event handlers configuration with string event type."""
+        # Mock handler class
+        mock_handler = MagicMock()
+
+        settings_with_handlers = {
+            "DEFAULT_TASKIQ_NAME": "default",
+            "TASKIQ_CONFIG": {
+                "default": {
+                    "BROKER": {
+                        "BACKEND": "taskiq.InMemoryBroker",
+                        "OPTIONS": {},
+                        "HANDLERS": [
+                            {
+                                "handler": "tests.test_base.test_base.MockEventHandler",
+                                "event": "WORKER_STARTUP",
+                            }
+                        ],
+                    }
+                }
+            },
+        }
+
+        agent = TaskiqAgent()
+
+        with patch("unfazed_taskiq.base.import_string") as mock_import:
+            # Mock broker class
+            mock_broker_cls = MagicMock()
+            mock_broker = MagicMock()
+            mock_broker_cls.return_value = mock_broker
+
+            # Mock handler class
+            mock_handler_cls = MagicMock()
+            mock_handler_cls.return_value = mock_handler
+
+            # Configure import_string to return appropriate classes
+            def side_effect(path):
+                if path == "taskiq.InMemoryBroker":
+                    return mock_broker_cls
+                elif path == "tests.test_base.test_base.MockEventHandler":
+                    return mock_handler_cls
+                return MagicMock()
+
+            mock_import.side_effect = side_effect
+
+            settings = UnfazedTaskiqSettings.model_validate(settings_with_handlers)
+            agent.setup(settings)
+
+            # Verify event handler was added with TaskiqEvents enum
+            mock_broker.add_event_handler.assert_called_once()
+            call_args = mock_broker.add_event_handler.call_args
+
+            # The event should be converted from string to TaskiqEvents enum
+
+            assert call_args[0][0] == TaskiqEvents.WORKER_STARTUP
+            assert call_args[0][1] == mock_handler_cls
+
+    def test_event_handlers_with_enum_event(self) -> None:
+        """Test event handlers configuration with TaskiqEvents enum."""
+
+        # Mock handler class
+        mock_handler = MagicMock()
+
+        settings_with_handlers = {
+            "DEFAULT_TASKIQ_NAME": "default",
+            "TASKIQ_CONFIG": {
+                "default": {
+                    "BROKER": {
+                        "BACKEND": "taskiq.InMemoryBroker",
+                        "OPTIONS": {},
+                        "HANDLERS": [
+                            {
+                                "handler": "tests.test_base.test_base.MockEventHandler",
+                                "event": "WORKER_STARTUP",  # Enum event type
+                            }
+                        ],
+                    }
+                }
+            },
+        }
+
+        agent = TaskiqAgent()
+
+        with patch("unfazed_taskiq.base.import_string") as mock_import:
+            # Mock broker class
+            mock_broker_cls = MagicMock()
+            mock_broker = MagicMock()
+            mock_broker_cls.return_value = mock_broker
+
+            # Mock handler class
+            mock_handler_cls = MagicMock()
+            mock_handler_cls.return_value = mock_handler
+
+            # Configure import_string to return appropriate classes
+            def side_effect(path):
+                if path == "taskiq.InMemoryBroker":
+                    return mock_broker_cls
+                elif path == "tests.test_base.test_base.MockEventHandler":
+                    return mock_handler_cls
+                return MagicMock()
+
+            mock_import.side_effect = side_effect
+
+            settings = UnfazedTaskiqSettings.model_validate(settings_with_handlers)
+            agent.setup(settings)
+
+            # Verify event handler was added with original enum
+            mock_broker.add_event_handler.assert_called_once()
+            call_args = mock_broker.add_event_handler.call_args
+
+            # The event should remain as TaskiqEvents enum
+            assert call_args[0][0] == TaskiqEvents.WORKER_STARTUP
+            assert call_args[0][1] == mock_handler_cls
+
+
+class TestTaskiqAgentSchedulerSources:
+    """Test TaskiqAgent scheduler sources configuration."""
+
+    def test_scheduler_sources_with_string_import(self) -> None:
+        """Test scheduler sources configuration with string import."""
+        settings_with_string_sources = {
+            "DEFAULT_TASKIQ_NAME": "default",
+            "TASKIQ_CONFIG": {
+                "default": {
+                    "BROKER": {"BACKEND": "taskiq.InMemoryBroker", "OPTIONS": {}},
+                    "SCHEDULER": {
+                        "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
+                        "SOURCES": [
+                            "unfazed_taskiq.contrib.scheduler.sources.TortoiseScheduleSource"  # String source
+                        ],
+                    },
+                }
+            },
+        }
+
+        agent = TaskiqAgent()
+
+        with patch("unfazed_taskiq.base.import_string") as mock_import:
+            # Mock broker class
+            mock_broker_cls = MagicMock()
+            mock_broker = MagicMock()
+            mock_broker_cls.return_value = mock_broker
+
+            # Mock scheduler class
+            mock_scheduler_cls = MagicMock()
+            mock_scheduler = MagicMock()
+            mock_scheduler_cls.return_value = mock_scheduler
+
+            # Mock source class
+            mock_source_cls = MagicMock()
+            mock_source = MagicMock()
+            mock_source_cls.return_value = mock_source
+
+            # Configure import_string to return appropriate classes
+            def side_effect(path):
+                if path == "taskiq.InMemoryBroker":
+                    return mock_broker_cls
+                elif path == "taskiq.scheduler.scheduler.TaskiqScheduler":
+                    return mock_scheduler_cls
+                elif (
+                    path
+                    == "unfazed_taskiq.contrib.scheduler.sources.TortoiseScheduleSource"
+                ):
+                    return mock_source_cls
+                return MagicMock()
+
+            mock_import.side_effect = side_effect
+
+            settings = UnfazedTaskiqSettings.model_validate(
+                settings_with_string_sources
+            )
+            agent.setup(settings)
+
+            # Verify scheduler was created with imported source
+            mock_scheduler_cls.assert_called_once()
+            call_args = mock_scheduler_cls.call_args
+
+            # Check that broker was passed
+            assert call_args[1]["broker"] == mock_broker
+
+            # Check that sources list contains the instantiated source
+            sources = call_args[1]["sources"]
+            assert len(sources) == 1
+            assert sources[0] == mock_source
+
+            # Verify source was instantiated with broker
+            mock_source_cls.assert_called_once_with(mock_broker)
+
+    def test_scheduler_sources_with_schedule_source_instance(self) -> None:
+        """Test scheduler sources configuration with ScheduleSource instance."""
+
+        # Create a mock ScheduleSource instance
+        mock_source_instance = MagicMock(spec=ScheduleSource)
+
+        settings_with_instance_sources = {
+            "DEFAULT_TASKIQ_NAME": "default",
+            "TASKIQ_CONFIG": {
+                "default": {
+                    "BROKER": {"BACKEND": "taskiq.InMemoryBroker", "OPTIONS": {}},
+                    "SCHEDULER": {
+                        "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
+                        "SOURCES": [mock_source_instance],  # ScheduleSource instance
+                    },
+                }
+            },
+        }
+
+        agent = TaskiqAgent()
+
+        with patch("unfazed_taskiq.base.import_string") as mock_import:
+            # Mock broker class
+            mock_broker_cls = MagicMock()
+            mock_broker = MagicMock()
+            mock_broker_cls.return_value = mock_broker
+
+            # Mock scheduler class
+            mock_scheduler_cls = MagicMock()
+            mock_scheduler = MagicMock()
+            mock_scheduler_cls.return_value = mock_scheduler
+
+            # Configure import_string to return appropriate classes
+            def side_effect(path):
+                if path == "taskiq.InMemoryBroker":
+                    return mock_broker_cls
+                elif path == "taskiq.scheduler.scheduler.TaskiqScheduler":
+                    return mock_scheduler_cls
+                return MagicMock()
+
+            mock_import.side_effect = side_effect
+
+            settings = UnfazedTaskiqSettings.model_validate(
+                settings_with_instance_sources
+            )
+            agent.setup(settings)
+
+            # Verify scheduler was created with the instance source
+            mock_scheduler_cls.assert_called_once()
+            call_args = mock_scheduler_cls.call_args
+
+            # Check that broker was passed
+            assert call_args[1]["broker"] == mock_broker
+
+            # Check that sources list contains the original instance
+            sources = call_args[1]["sources"]
+            assert len(sources) == 1
+            assert sources[0] == mock_source_instance
+
+
+class TestTaskiqAgentNonTaskiqScheduler:
+    """Test TaskiqAgent with non-TaskiqScheduler instances."""
+
+    async def test_startup_with_non_taskiq_scheduler(self) -> None:
+        """Test startup method skips non-TaskiqScheduler instances."""
+
+        agent = TaskiqAgent()
+        agent._ready = True
+
+        # Create a mock scheduler that is NOT a TaskiqScheduler instance
+        mock_non_taskiq_scheduler = MagicMock()
+        mock_non_taskiq_scheduler.startup = AsyncMock()
+
+        # Create a real TaskiqScheduler mock
+        mock_taskiq_scheduler = MagicMock(spec=TaskiqScheduler)
+        mock_taskiq_scheduler.startup = AsyncMock()
+
+        # Add both to schedulers dict
+        agent._schedulers = {
+            "non_taskiq": mock_non_taskiq_scheduler,
+            "taskiq": mock_taskiq_scheduler,
+        }
+
+        await agent.startup()
+
+        # Verify non-TaskiqScheduler startup was NOT called
+        mock_non_taskiq_scheduler.startup.assert_not_called()
+
+        # Verify TaskiqScheduler startup WAS called
+        mock_taskiq_scheduler.startup.assert_called_once()
+
+    async def test_shutdown_with_non_taskiq_scheduler(self) -> None:
+        """Test shutdown method skips non-TaskiqScheduler instances."""
+
+        agent = TaskiqAgent()
+        agent._ready = True
+
+        # Create a mock scheduler that is NOT a TaskiqScheduler instance
+        mock_non_taskiq_scheduler = MagicMock()
+        mock_non_taskiq_scheduler.shutdown = AsyncMock()
+
+        # Create a real TaskiqScheduler mock
+        mock_taskiq_scheduler = MagicMock(spec=TaskiqScheduler)
+        mock_taskiq_scheduler.shutdown = AsyncMock()
+
+        # Add both to schedulers dict
+        agent._schedulers = {
+            "non_taskiq": mock_non_taskiq_scheduler,
+            "taskiq": mock_taskiq_scheduler,
+        }
+
+        await agent.shutdown()
+
+        # Verify non-TaskiqScheduler shutdown was NOT called
+        mock_non_taskiq_scheduler.shutdown.assert_not_called()
+
+        # Verify TaskiqScheduler shutdown WAS called
+        mock_taskiq_scheduler.shutdown.assert_called_once()
+
+
+# Mock event handler class for testing
+class MockEventHandler:
+    """Mock event handler for testing purposes."""
+
+    pass

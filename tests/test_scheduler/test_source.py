@@ -196,3 +196,138 @@ class TestTortoiseScheduleSource(object):
         ).first()
         assert db_data is not None
         assert origin_db_data.total_run_count + 1 == db_data.total_run_count
+
+
+class TestTortoiseScheduleSourceErrors(object):
+    """Test error conditions in TortoiseScheduleSource."""
+
+    def test_tortoise_schedule_source_init_no_database_settings(self) -> None:
+        """Test TortoiseScheduleSource initialization with no DATABASE settings."""
+        from unittest.mock import patch, MagicMock
+        import pytest
+        
+        # Mock settings to have no DATABASE configuration
+        mock_unfazed_settings = MagicMock()
+        mock_unfazed_settings.DATABASE = None
+        
+        with patch("unfazed_taskiq.contrib.scheduler.sources.settings") as mock_settings_obj:
+            mock_settings_obj.__getitem__.return_value = mock_unfazed_settings
+            
+            with pytest.raises(RuntimeError, match="DATABASE is not set in UNFAZED_SETTINGS"):
+                TortoiseScheduleSource()
+
+    def test_tortoise_schedule_source_init_invalid_db_alias(self) -> None:
+        """Test TortoiseScheduleSource initialization with invalid db_alias."""
+        from unittest.mock import patch, MagicMock
+        import pytest
+        
+        # Mock settings with DATABASE but without the requested alias
+        mock_database = MagicMock()
+        mock_database.connections = {"default": "some_connection"}  # Only has 'default'
+        
+        mock_unfazed_settings = MagicMock()
+        mock_unfazed_settings.DATABASE = mock_database
+        
+        with patch("unfazed_taskiq.contrib.scheduler.sources.settings") as mock_settings_obj:
+            mock_settings_obj.__getitem__.return_value = mock_unfazed_settings
+            
+            with pytest.raises(RuntimeError, match="Database connection invalid_alias not found"):
+                TortoiseScheduleSource(db_alias="invalid_alias")
+
+    async def test_tortoise_schedule_source_startup_tortoise_not_initialized(self) -> None:
+        """Test TortoiseScheduleSource startup when Tortoise is not initialized."""
+        from unittest.mock import patch
+        import pytest
+        
+        source = TortoiseScheduleSource(schedule_alias="test")
+        
+        # Mock Tortoise._inited to be False
+        with patch("unfazed_taskiq.contrib.scheduler.sources.Tortoise") as mock_tortoise:
+            mock_tortoise._inited = False
+            
+            with pytest.raises(RuntimeError, match="Tortoise is not initialized"):
+                await source.startup()
+
+    async def test_tortoise_schedule_source_add_schedule_duplicate_error(self) -> None:
+        """Test TortoiseScheduleSource add_schedule with duplicate schedule_id."""
+        import pytest
+        import uuid
+        
+        source = TortoiseScheduleSource(schedule_alias="test_schedule3")
+        await source.startup()
+        
+        # First create a task to ensure we have something to duplicate
+        original_schedule_id = str(uuid.uuid4().hex)
+        original_task = ScheduledTask(
+            task_name="test.original_task",
+            args=[],
+            kwargs={},
+            labels={},
+            schedule_id=original_schedule_id,
+            cron="0 0 * * *",
+        )
+        await source.add_schedule(original_task)
+        
+        # Now try to create a duplicate with the same schedule_id
+        duplicate_task = ScheduledTask(
+            task_name="test.duplicate_task",
+            args=[],
+            kwargs={},
+            labels={},
+            schedule_id=original_schedule_id,  # Use same schedule_id
+            cron="0 1 * * *",
+        )
+        
+        with pytest.raises(RuntimeError, match=f"Schedule {original_schedule_id} already exists"):
+            await source.add_schedule(duplicate_task)
+
+    async def test_tortoise_schedule_source_add_schedule_with_time(self) -> None:
+        """Test TortoiseScheduleSource add_schedule with time-based scheduling."""
+        import uuid
+        from datetime import datetime, timezone
+        
+        source = TortoiseScheduleSource(schedule_alias="test_schedule3")
+        await source.startup()
+        
+        # Create a schedule task with time instead of cron
+        task_time = datetime(2024, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+        time_task = ScheduledTask(
+            task_name="test.time_based_task",
+            args=[1, 2, 3],
+            kwargs={"key": "value"},
+            labels={"env": "test"},
+            schedule_id=str(uuid.uuid4().hex),
+            time=task_time,  # Use time instead of cron
+        )
+        
+        await source.add_schedule(time_task)
+        
+        # Verify the task was added correctly
+        added_task = await PeriodicTask.filter(schedule_id=time_task.schedule_id).first()
+        assert added_task is not None
+        assert added_task.task_name == "test.time_based_task"
+        assert added_task.time == task_time
+        assert added_task.cron is None
+
+    async def test_tortoise_schedule_source_add_schedule_no_schedule_error(self) -> None:
+        """Test TortoiseScheduleSource add_schedule with no cron or time."""
+        import pytest
+        import uuid
+        from unittest.mock import MagicMock
+        
+        source = TortoiseScheduleSource(schedule_alias="test_schedule3")
+        await source.startup()
+        
+        # Create a mock ScheduledTask that bypasses Pydantic validation
+        # to test the RuntimeError in add_schedule method
+        mock_task = MagicMock()
+        mock_task.task_name = "test.no_schedule_task"
+        mock_task.args = []
+        mock_task.kwargs = {}
+        mock_task.labels = {}
+        mock_task.schedule_id = str(uuid.uuid4().hex)
+        mock_task.cron = None
+        mock_task.time = None
+        
+        with pytest.raises(RuntimeError, match="No schedule found"):
+            await source.add_schedule(mock_task)
