@@ -1,7 +1,15 @@
+import asyncio
+import dataclasses
+import traceback
+from dataclasses import replace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from taskiq.cli.common_args import LogLevel
+from taskiq.cli.scheduler.args import SchedulerArgs
 
+from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 from unfazed_taskiq.cli.scheduler.cmd import SchedulerCMD
 
 
@@ -124,7 +132,7 @@ class TestSchedulerCMD(object):
             "test_module",
             "--scheduler-alias",
             "default",
-            "--scheduler-alias", 
+            "--scheduler-alias",
             "worker",
         ]
 
@@ -134,7 +142,9 @@ class TestSchedulerCMD(object):
                 "unfazed_taskiq.cli.scheduler.cmd.SchedulerEventArgs"
             ) as mock_scheduler_args,
             patch("unfazed_taskiq.cli.scheduler.cmd.get_agent") as mock_get_agent,
-            patch("unfazed_taskiq.cli.scheduler.cmd.run_scheduler") as mock_run_scheduler,
+            patch(
+                "unfazed_taskiq.cli.scheduler.cmd.run_scheduler"
+            ) as mock_run_scheduler,
             patch("unfazed_taskiq.cli.scheduler.cmd.asyncio") as mock_asyncio,
             patch("unfazed_taskiq.cli.scheduler.cmd.replace") as mock_replace,
         ):
@@ -159,7 +169,7 @@ class TestSchedulerCMD(object):
             mock_scheduler_other = Mock()
             mock_agent._schedulers = {
                 "default": mock_scheduler_default,
-                "worker": mock_scheduler_worker, 
+                "worker": mock_scheduler_worker,
                 "other": mock_scheduler_other,  # This should not be included
             }
             mock_get_agent.return_value = mock_agent
@@ -167,28 +177,32 @@ class TestSchedulerCMD(object):
             # Setup replace mock to return modified parsed args
             mock_event_parsed_default = Mock()
             mock_event_parsed_worker = Mock()
-            mock_replace.side_effect = [mock_event_parsed_default, mock_event_parsed_worker]
+            mock_replace.side_effect = [
+                mock_event_parsed_default,
+                mock_event_parsed_worker,
+            ]
 
             # Setup run_scheduler to return a coroutine
-            async def mock_scheduler_coro():
+            async def mock_scheduler_coro() -> None:
                 pass
-            
+
             mock_run_scheduler.return_value = mock_scheduler_coro()
 
             # Setup asyncio mocks
             mock_task_default = Mock()
             mock_task_worker = Mock()
             mock_asyncio.create_task.side_effect = [mock_task_default, mock_task_worker]
-            
+
             # Mock the run method to avoid actual execution
-            def mock_run_side_effect(coro):
+            def mock_run_side_effect(coro: Any) -> None:
                 # For init_unfazed call, just return None
-                if hasattr(coro, '__name__') and 'init_unfazed' in str(coro):
+                if hasattr(coro, "__name__") and "init_unfazed" in str(coro):
                     return None
                 # For _run_all_scheduler, we need to simulate the execution
                 import asyncio
+
                 return asyncio.get_event_loop().run_until_complete(coro)
-            
+
             mock_asyncio.run.side_effect = mock_run_side_effect
 
             # Call exec
@@ -208,7 +222,9 @@ class TestSchedulerCMD(object):
             assert mock_asyncio.create_task.call_count == 2
 
             # Verify gather was called with the created tasks
-            mock_asyncio.gather.assert_called_once_with(mock_task_default, mock_task_worker)
+            mock_asyncio.gather.assert_called_once_with(
+                mock_task_default, mock_task_worker
+            )
 
     def test_exec_no_tasks_when_no_matching_schedulers(self) -> None:
         """Test exec method creates no tasks when no schedulers match the alias."""
@@ -226,7 +242,6 @@ class TestSchedulerCMD(object):
                 "unfazed_taskiq.cli.scheduler.cmd.SchedulerEventArgs"
             ) as mock_scheduler_args,
             patch("unfazed_taskiq.cli.scheduler.cmd.get_agent") as mock_get_agent,
-            patch("unfazed_taskiq.cli.scheduler.cmd.run_scheduler") as mock_run_scheduler,
             patch("unfazed_taskiq.cli.scheduler.cmd.asyncio") as mock_asyncio,
         ):
             # Setup Unfazed mock
@@ -252,14 +267,15 @@ class TestSchedulerCMD(object):
             mock_get_agent.return_value = mock_agent
 
             # Mock the run method to avoid actual execution
-            def mock_run_side_effect(coro):
+            def mock_run_side_effect(coro: Any) -> None:
                 # For init_unfazed call, just return None
-                if hasattr(coro, '__name__') and 'init_unfazed' in str(coro):
+                if hasattr(coro, "__name__") and "init_unfazed" in str(coro):
                     return None
                 # For _run_all_scheduler, we need to simulate the execution
                 import asyncio
+
                 return asyncio.get_event_loop().run_until_complete(coro)
-            
+
             mock_asyncio.run.side_effect = mock_run_side_effect
 
             # Call exec
@@ -267,57 +283,36 @@ class TestSchedulerCMD(object):
 
             # Verify no tasks were created
             mock_asyncio.create_task.assert_not_called()
-            
+
             # Verify gather was not called since no tasks
             mock_asyncio.gather.assert_not_called()
 
     def test_exec_handles_exception_in_scheduler(self) -> None:
         """Test exec method handles exceptions during scheduler execution."""
-        # This test covers the exception handling code path (lines 62-64)
-        # We test that when an exception occurs, it gets properly handled
-        
-        # Since the exception handling logic is quite complex to mock properly
-        # due to asyncio.run() behavior, we'll test it by ensuring the 
-        # exception path is covered through a simpler approach
-        
-        cmd = SchedulerCMD()
-        
-        # Test that the exception handling code exists and can be reached
-        # by directly testing the _run_all_scheduler function behavior
-        import asyncio
-        from unittest.mock import AsyncMock
-        
         with (
             patch("unfazed_taskiq.cli.scheduler.cmd.get_agent") as mock_get_agent,
-            patch("unfazed_taskiq.cli.scheduler.cmd.capture_exception") as mock_capture_exception,
+            patch(
+                "unfazed_taskiq.cli.scheduler.cmd.capture_exception"
+            ) as mock_capture_exception,
             patch("unfazed_taskiq.cli.scheduler.cmd.logger") as mock_logger,
         ):
             # Setup get_agent to raise an exception
             test_exception = Exception("Test scheduler error")
             mock_get_agent.side_effect = test_exception
-            
-            # Create the _run_all_scheduler function context manually
-            from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
-            parsed = SchedulerEventArgs(
-                scheduler="test.scheduler",
-                modules=["test.module"],
-                scheduler_alias=["default"]
-            )
-            
+
             # Define the async function that mimics _run_all_scheduler
-            async def test_run_all_scheduler():
-                import traceback
-                
+            async def test_run_all_scheduler() -> None:
                 try:
-                    agent = mock_get_agent()  # This will raise our test exception
-                    # The rest of the code won't be reached
+                    mock_get_agent()
                 except Exception as e:
                     mock_capture_exception(e)
-                    mock_logger.error(f"Failed to start scheduler: {traceback.format_exc()}")
-            
+                    mock_logger.error(
+                        f"Failed to start scheduler: {traceback.format_exc()}"
+                    )
+
             # Run the test function
             asyncio.run(test_run_all_scheduler())
-            
+
             # Verify exception was captured and logged
             mock_capture_exception.assert_called_once_with(test_exception)
             mock_logger.error.assert_called_once()
@@ -328,9 +323,6 @@ class TestSchedulerCMD(object):
 class TestSchedulerArgs(object):
     def test_scheduler_event_args_init(self) -> None:
         """Test SchedulerEventArgs initialization."""
-        from taskiq.cli.common_args import LogLevel
-
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         # Test with minimal args
         args = SchedulerEventArgs(scheduler="test.scheduler", modules=["test.module"])
@@ -346,9 +338,6 @@ class TestSchedulerArgs(object):
 
     def test_scheduler_event_args_with_all_params(self) -> None:
         """Test SchedulerEventArgs with all parameters."""
-        from taskiq.cli.common_args import LogLevel
-
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = SchedulerEventArgs(
             scheduler="test.scheduler",
@@ -374,7 +363,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_minimal_args(self) -> None:
         """Test from_cli with minimal arguments."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = ["test.scheduler", "test.module"]
         result: SchedulerEventArgs = SchedulerEventArgs.from_cli(args)
@@ -391,7 +379,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_with_all_options(self) -> None:
         """Test from_cli with all command line options."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = [
             "test.scheduler",
@@ -427,7 +414,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_with_short_options(self) -> None:
         """Test from_cli with short command line options."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = [
             "test.scheduler",
@@ -448,7 +434,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_with_no_modules(self) -> None:
         """Test from_cli with no modules specified."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = ["test.scheduler"]
         result: SchedulerEventArgs = SchedulerEventArgs.from_cli(args)
@@ -458,7 +443,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_with_multiple_tasks_patterns(self) -> None:
         """Test from_cli with multiple tasks patterns."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = [
             "test.scheduler",
@@ -477,7 +461,6 @@ class TestSchedulerArgs(object):
 
     def test_from_cli_with_single_tasks_pattern(self) -> None:
         """Test from_cli with single tasks pattern (should keep default)."""
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         args = [
             "test.scheduler",
@@ -492,9 +475,6 @@ class TestSchedulerArgs(object):
 
     def test_dataclass_replace(self) -> None:
         """Test dataclass replace functionality."""
-        from dataclasses import replace
-
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         # Create initial instance
         original = SchedulerEventArgs(
@@ -563,9 +543,6 @@ class TestSchedulerArgs(object):
 
     def test_dataclass_fields(self) -> None:
         """Test that SchedulerEventArgs has correct dataclass fields."""
-        import dataclasses
-
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         fields = dataclasses.fields(SchedulerEventArgs)
         field_names = [field.name for field in fields]
@@ -587,9 +564,6 @@ class TestSchedulerArgs(object):
 
     def test_inheritance_from_scheduler_args(self) -> None:
         """Test that SchedulerEventArgs inherits from SchedulerArgs."""
-        from taskiq.cli.scheduler.args import SchedulerArgs
-
-        from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
         assert issubclass(SchedulerEventArgs, SchedulerArgs)
 

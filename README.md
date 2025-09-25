@@ -1,92 +1,188 @@
-Unfazed Taskiq
-===============
+# Unfazed Taskiq
 
 taskiq wrapper with unfazed.
 
-
-Installation
-------------
+## Installation
 
 ```bash
 pip install unfazed-taskiq
 ```
 
+## Quick Start
 
-Quick Start
------
+This guide will help you get started with Unfazed Taskiq in just a few minutes.
 
-Add settings to your unfazed settings file:
+### 1. Configure Settings
+
+Add Taskiq configuration to your Unfazed settings file:
 
 ```python
-
-from taskiq_redis import ListRedisScheduleSource
-redis_resource = ListRedisScheduleSource(url=f"redis://{REDIS_HOST}:6379")
-
+AMQP_URL = os.getenv("AMQP_URL", DEFAULT_AMQP_URL)
 # entry/settings.py
 UNFAZED_TASKIQ_SETTINGS = {
-    "BROKER": {
-        "BACKEND": "taskiq.InMemoryBroker",
-        "OPTIONS": {},
-    },
-    "RESULT": {
-        "BACKEND": "taskiq_redis.RedisAsyncResultBackend",
-        "OPTIONS": {
-            "redis_url": "redis://redis:6379",
+    "DEFAULT_TASKIQ_NAME": "default",
+    "TASKIQ_CONFIG": {
+        "default": {
+            "BROKER": {
+                "BACKEND": "taskiq_aio_pika.AioPikaBroker",
+                "OPTIONS": {
+                    "url": AMQP_URL,
+                    "exchange_name": "unfazed-taskiq",
+                    "queue_name": "unfazed-taskiq",
+                },
+            },
         },
     },
-    # Sources can be a list of strings or ScheduleSource instances
-    "SCHEDULER": {
-        "BACKEND": "taskiq.scheduler.scheduler.TaskiqScheduler",
-        "SOURCES": ["taskiq.schedule_sources.LabelScheduleSource", redis_resource],
-    },
 }
 
-# add lifespan to your settings
+# Add Taskiq lifespan to your Unfazed settings
 UNFAZED_SETTINGS = {
     "LIFESPAN": ["unfazed_taskiq.lifespan.TaskiqLifeSpan"],
+    # ... your other settings
 }
-
 ```
 
-Use UnfazedTaskiqAgent in your app's `tasks.py`:
+### 2. Create Tasks
 
-> Note: Sources can be a list of strings or ScheduleSource instances, when it's a string, it will be imported and instantiated with args `broker` from `BROKER` in settings.
+Define your tasks in your app's `tasks.py` file:
 
 ```python
 # app/tasks.py
-from unfazed_taskiq import agent
+from unfazed_taskiq.decorators import task
 
-@agent.broker.task
-async def add(a: int, b: int) -> int:
+@task
+async def add_numbers(a: int, b: int) -> int:
+    """Simple addition task."""
     return a + b
-
-
-@agent.broker.task(schedule=[{"crontab": "*/1 * * * *", "args": [1, 2]}])
-async def add_schedule(a: int, b: int) -> int:
-    return a + b
-
 ```
 
+### 3. Start Worker
 
-Kick off tasks 
+```shell
+# auto discover all async task
+uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd
+
+# auto discover all async task by task file
+uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp backend/spider/tasks.py
+```
+
+### 4. Execute Tasks
 
 ```python
+from xxx.task import add_numbers
+async def your_service():
+    # Execute task immediately
+    result = await add_numbers.kiq(10, 20)
+    print(f"Task result: {result}")
+```
 
-from .tasks import add
+## How to use Scheduler
+
+### 1. Configure Settings
+
+Add Taskiq configuration to your Unfazed settings file:
+
+```python
+from unfazed_taskiq.contrib.scheduler.sources import TortoiseScheduleSource
+
+AMQP_URL = os.getenv("AMQP_URL", DEFAULT_AMQP_URL)
+unfazedtaskiq_source = TortoiseScheduleSource(schedule_alias="unfazedtaskiq")
+# entry/settings.py
+UNFAZED_TASKIQ_SETTINGS = {
+    "DEFAULT_TASKIQ_NAME": "default",
+    "TASKIQ_CONFIG": {
+        "default": {
+            "BROKER": {
+                "BACKEND": "taskiq_aio_pika.AioPikaBroker",
+                "OPTIONS": {
+                    "url": AMQP_URL,
+                    "exchange_name": "unfazedtaskiq",
+                    "queue_name": "unfazedtaskiq",
+                },
+            },
+            "SCHEDULER": {
+                "SOURCES": [unfazedtaskiq_source],
+                "BACKEND": "taskiq.TaskiqScheduler",
+            },
+        },
+    },
+}
+
+# Add Taskiq lifespan to your Unfazed settings
+UNFAZED_SETTINGS = {
+    "LIFESPAN": ["unfazed_taskiq.lifespan.TaskiqLifeSpan"],
+    # ... your other settings
+}
+```
+
+### 2. Create Tasks
+
+Define your tasks in your app's `tasks.py` file:
+
+```python
+# app/tasks.py
+from unfazed_taskiq.decorators import task
+
+@task
+async def send_email(email: str, content: str) -> None:
+    """send some msg for some body."""
+    ...
+
+```
+
+### 3. Schedule Tasks
+
+You can schedule tasks using the database scheduler:
+
+```python
+# Create scheduled tasks in your database
+from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
+import json
+
+# Create a periodic task that runs every minute
+# Also, can use Unfazed-admin UI config
+await PeriodicTask.create(
+    task_name="app.tasks.send_email",
+    task_args=json.dumps(["test@gmail.com", "test content"]),
+    task_kwargs=json.dumps({}),
+    cron="*/1 * * * *",  # Every minute
+    description="Add two numbers every minute",
+)
+```
+
+### 4. 5. Start Scheduler
+
+Execute tasks from your application code:
+
+```python
+# In your service/view/handler
+from app.tasks import add_numbers, send_email
 
 async def your_service():
-    await add.kiq(1, 2)
+    # Execute task immediately
+    result = await add_numbers.kiq(10, 20)
+    print(f"Task result: {result}")
 
+    # Execute task asynchronously (fire and forget)
+    await send_email.kiq(
+        to="user@example.com",
+        subject="Welcome!",
+        body="Welcome to our service!"
+    )
 ```
 
+### 5. Start Workers and Scheduler
 
-Start Taskiq Worker or Scheduler
+Start the Taskiq worker to process tasks:
 
 ```bash
-taskiq worker unfazed_taskiq.cli:broker
-
-# or
-taskiq scheduler unfazed_taskiq.cli:scheduler
+uv run taskiq unfazed-scheduler unfazed_taskiq.agent:scheduler
 ```
 
+## 📖 更多文档
 
+pls read [taskiq document](https://taskiq-python.github.io/guide/)
+
+## 📄 许可证
+
+本项目基于 MIT 许可证开源。

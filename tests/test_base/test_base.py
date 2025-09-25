@@ -531,7 +531,7 @@ class TestTaskiqAgentEventHandlers:
             mock_handler_cls.return_value = mock_handler
 
             # Configure import_string to return appropriate classes
-            def side_effect(path):
+            def side_effect(path: str) -> Any:
                 if path == "taskiq.InMemoryBroker":
                     return mock_broker_cls
                 elif path == "tests.test_base.test_base.MockEventHandler":
@@ -589,7 +589,7 @@ class TestTaskiqAgentEventHandlers:
             mock_handler_cls.return_value = mock_handler
 
             # Configure import_string to return appropriate classes
-            def side_effect(path):
+            def side_effect(path: str) -> Any:
                 if path == "taskiq.InMemoryBroker":
                     return mock_broker_cls
                 elif path == "tests.test_base.test_base.MockEventHandler":
@@ -649,7 +649,7 @@ class TestTaskiqAgentSchedulerSources:
             mock_source_cls.return_value = mock_source
 
             # Configure import_string to return appropriate classes
-            def side_effect(path):
+            def side_effect(path: str) -> Any:
                 if path == "taskiq.InMemoryBroker":
                     return mock_broker_cls
                 elif path == "taskiq.scheduler.scheduler.TaskiqScheduler":
@@ -716,7 +716,7 @@ class TestTaskiqAgentSchedulerSources:
             mock_scheduler_cls.return_value = mock_scheduler
 
             # Configure import_string to return appropriate classes
-            def side_effect(path):
+            def side_effect(path: str) -> Any:
                 if path == "taskiq.InMemoryBroker":
                     return mock_broker_cls
                 elif path == "taskiq.scheduler.scheduler.TaskiqScheduler":
