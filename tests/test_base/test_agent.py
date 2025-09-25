@@ -260,3 +260,85 @@ class TestAgentModule:
                             mock_import_setting.assert_called_with(
                                 "UNFAZED_SETTINGS_MODULE"
                             )
+
+
+class TestInitializeAgent:
+    """Test _initialize_agent function functionality."""
+
+    def test_initialize_agent_success(self) -> None:
+        """Test _initialize_agent successfully initializes agent."""
+        # Arrange
+        mock_settings = {
+            "DEFAULT_TASKIQ_NAME": "default",
+            "TASKIQ_CONFIG": {
+                "default": {
+                    "BROKER": {
+                        "BACKEND": "taskiq.InMemoryBroker",
+                        "OPTIONS": {},
+                    },
+                },
+            },
+        }
+
+        with patch.dict(os.environ, {"UNFAZED_SETTINGS_MODULE": "test_settings"}):
+            with patch("unfazed_taskiq.agent.import_setting") as mock_import_setting:
+                mock_import_setting.return_value = {
+                    "UNFAZED_TASKIQ_SETTINGS": mock_settings
+                }
+
+                with patch("unfazed_taskiq.agent.agent") as mock_agent:
+                    mock_agent.reset = MagicMock()
+                    mock_agent.setup = MagicMock()
+
+                    from unfazed_taskiq.agent import _initialize_agent
+
+                    # Act
+                    result = _initialize_agent()
+
+                    # Assert
+                    assert result is mock_agent
+                    mock_agent.reset.assert_called_once()
+                    mock_agent.setup.assert_called_once()
+
+                    # Verify settings validation
+                    call_args = mock_agent.setup.call_args[0][0]
+                    assert isinstance(call_args, UnfazedTaskiqSettings)
+
+    def test_initialize_agent_missing_env_var(self) -> None:
+        """Test _initialize_agent raises error when UNFAZED_SETTINGS_MODULE is not set."""
+        with patch.dict(os.environ, {}, clear=True):
+            from unfazed_taskiq.agent import _initialize_agent
+
+            # Act & Assert
+            with pytest.raises(ValueError, match="UNFAZED_SETTINGS_MODULE is not set"):
+                _initialize_agent()
+
+    def test_initialize_agent_import_error(self) -> None:
+        """Test _initialize_agent handles import setting error."""
+        with patch.dict(os.environ, {"UNFAZED_SETTINGS_MODULE": "nonexistent_module"}):
+            with patch("unfazed_taskiq.agent.import_setting") as mock_import_setting:
+                mock_import_setting.side_effect = ImportError("Module not found")
+
+                from unfazed_taskiq.agent import _initialize_agent
+
+                # Act & Assert
+                with pytest.raises(
+                    ImportError, match="Failed to import settings module"
+                ):
+                    _initialize_agent()
+
+    def test_initialize_agent_invalid_settings(self) -> None:
+        """Test _initialize_agent handles invalid settings configuration."""
+        invalid_settings = {"INVALID_KEY": "invalid_value"}
+
+        with patch.dict(os.environ, {"UNFAZED_SETTINGS_MODULE": "test_settings"}):
+            with patch("unfazed_taskiq.agent.import_setting") as mock_import_setting:
+                mock_import_setting.return_value = {
+                    "UNFAZED_TASKIQ_SETTINGS": invalid_settings
+                }
+
+                from unfazed_taskiq.agent import _initialize_agent
+
+                # Act & Assert
+                with pytest.raises(ValueError, match="Invalid settings configuration"):
+                    _initialize_agent()

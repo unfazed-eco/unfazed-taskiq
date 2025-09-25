@@ -1,4 +1,5 @@
 import os
+import threading
 from typing import Optional
 
 from taskiq import AsyncBroker, TaskiqScheduler
@@ -8,22 +9,21 @@ from .base import TaskiqAgent, agent
 from .settings import UnfazedTaskiqSettings
 
 _agent: Optional[TaskiqAgent] = None
+_agent_lock = threading.Lock()
 
 
-def get_agent() -> TaskiqAgent:
+def _initialize_agent() -> TaskiqAgent:
     """
-    interface for getting taskiq client
+    Initialize the TaskiqAgent with settings from environment.
 
-    Example:
-        taskiq worker unfazed_taskiq.cli:broker
-        taskiq worker unfazed_taskiq.cli:scheduler
+    This function handles the actual initialization logic including:
+    - Loading settings from UNFAZED_SETTINGS_MODULE
+    - Validating configuration
+    - Setting up the agent
+
+    Returns:
+        TaskiqAgent: The initialized agent instance
     """
-
-    global _agent
-
-    if _agent is not None and _agent._ready:
-        return _agent
-
     if not os.environ.get("UNFAZED_SETTINGS_MODULE"):
         raise ValueError("UNFAZED_SETTINGS_MODULE is not set")
 
@@ -46,8 +46,35 @@ def get_agent() -> TaskiqAgent:
     agent.reset()
     agent.setup(settings)
 
-    _agent = agent
     return agent
+
+
+def get_agent() -> TaskiqAgent:
+    """
+    Get the TaskiqAgent instance, initializing it if necessary.
+
+    This function uses double-checked locking pattern for thread safety.
+    If the agent is already initialized and ready, it returns immediately.
+    Otherwise, it initializes the agent in a thread-safe manner.
+
+    Returns:
+        TaskiqAgent: The agent instance
+    """
+    global _agent
+
+    # First check (without lock, fast path)
+    if _agent is not None and _agent._ready:
+        return _agent
+
+    # Double-checked locking pattern for thread safety
+    with _agent_lock:
+        # Second check (with lock, prevent duplicate initialization)
+        if _agent is not None and _agent._ready:
+            return _agent
+
+        # Initialize the agent
+        _agent = _initialize_agent()
+        return _agent
 
 
 broker: AsyncBroker = get_agent().get_broker()
