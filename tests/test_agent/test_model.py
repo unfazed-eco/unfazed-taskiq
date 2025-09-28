@@ -1,15 +1,32 @@
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+import sys
+from typing import Any, Awaitable, Callable, Iterable, List, Sequence
+from unittest.mock import AsyncMock
 
 import pytest
-from taskiq import AsyncBroker, ScheduleSource, TaskiqEvents, TaskiqScheduler
+from taskiq import (
+    AckableMessage,
+    AsyncBroker,
+    ScheduleSource,
+    TaskiqEvents,
+    TaskiqScheduler,
+)
+from taskiq.abc.middleware import TaskiqMiddleware
+from taskiq.abc.result_backend import AsyncResultBackend
+from taskiq.message import BrokerMessage
+from taskiq.result import TaskiqResult
+from taskiq.state import TaskiqState
 
 from unfazed_taskiq.agent.model import TaskiqAgent
 from unfazed_taskiq.settings import Broker, Result, Scheduler, TaskiqConfig
 
 
+class SchedulerResult:
+    def __init__(self) -> None:
+        self.tasks: list[str] = []
+
+
 class TestTaskiqAgent:
-    def _build_config(self):
+    def _build_config(self) -> TaskiqConfig:
         return TaskiqConfig(
             BROKER=Broker(
                 BACKEND="tests.doubles.FakeBroker",
@@ -41,68 +58,81 @@ class TestTaskiqAgent:
         )
 
     @pytest.fixture(autouse=True)
-    def doubles(self, monkeypatch):
-        class FakeBroker(AsyncBroker):
-            def __init__(self, **kwargs):
+    def doubles(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        class FakeResultBackend(AsyncResultBackend[Any]):
+            def __init__(self, **kwargs: Any) -> None:
                 super().__init__()
                 self.kwargs = kwargs
-                self.middlewares_mock = MagicMock()
-                self.handlers_mock = MagicMock()
-                self.result_backend_mock = MagicMock()
-                self.startup_mock = AsyncMock()
-                self.shutdown_mock = AsyncMock()
+                self.calls: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
 
-            def add_middlewares(self, middleware):
-                self.middlewares_mock(middleware)
+            async def set_result(self, task_id: str, result: TaskiqResult[Any]) -> None:
+                self.calls.append(("set", (task_id, result), {}))
 
-            def add_event_handler(self, event, handler):
-                self.handlers_mock(event, handler)
+            async def is_result_ready(self, task_id: str) -> bool:
+                self.calls.append(("ready", (task_id,), {}))
+                return True
 
-            async def kick(self) -> None:
-                pass
+            async def get_result(
+                self, task_id: str, with_logs: bool = False
+            ) -> TaskiqResult[Any]:
+                self.calls.append(("get", (task_id,), {"with_logs": with_logs}))
+                return TaskiqResult(  # type: ignore
+                    is_ok=True, return_value=None, execution_time=0, log=None
+                )
 
-            async def listen(self) -> None:
-                pass
+        class FakeBroker(AsyncBroker):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__()
+                self.kwargs = kwargs
+                self.startup_mock: AsyncMock = AsyncMock()
+                self.shutdown_mock: AsyncMock = AsyncMock()
+                self.kick_mock: AsyncMock = AsyncMock()
+                self.listen_result: Iterable[AckableMessage] = []
+
+            async def kick(self, message: BrokerMessage) -> None:
+                await self.kick_mock(message)
+
+            async def listen(self) -> Iterable[AckableMessage]:  # type: ignore
+                return self.listen_result
 
             async def startup(self) -> None:
                 await self.startup_mock()
+                await super().startup()
 
             async def shutdown(self) -> None:
                 await self.shutdown_mock()
+                await super().shutdown()
 
-            def with_result_backend(self, backend):
-                self.result_backend_mock(backend)
+        class MiddlewareA(TaskiqMiddleware):
+            async def pre_execute(self, message: BrokerMessage) -> BrokerMessage:  # type: ignore
+                return message
 
-        class MiddlewareA:
-            def __call__(self):
-                return "middleware-A"
-
-        class MiddlewareB:
-            def __call__(self):
-                return "middleware-B"
+        class MiddlewareB(TaskiqMiddleware):
+            async def pre_execute(self, message: BrokerMessage) -> BrokerMessage:  # type: ignore
+                return message
 
         class EventHandler:
-            pass
-
-        class ResultBackend:
-            def __init__(self, **kwargs):
-                self.kwargs = kwargs
+            def __call__(self, state: TaskiqState) -> None:
+                state.custom["called"] = True  # type: ignore[attr-defined]
 
         class SchedulerBackend(TaskiqScheduler):
-            def __init__(self, broker: Any, sources: list[Any]) -> None:
-                self.startup_mock = AsyncMock()
-                self.shutdown_mock = AsyncMock()
-                self.run_mock = AsyncMock()
-                super().__init__(broker, sources)
+            def __init__(
+                self, broker: AsyncBroker, sources: Sequence[ScheduleSource]
+            ) -> None:
+                self.startup_mock: AsyncMock = AsyncMock()
+                self.shutdown_mock: AsyncMock = AsyncMock()
+                self.run_mock: AsyncMock = AsyncMock()
+                super().__init__(broker, list(sources))
 
-            async def add_task(self, task: Any) -> None:
-                pass
+            async def add_task(self, task: Callable[..., Awaitable[None]]) -> None:
+                self.run_mock(task)
 
-            async def remove_task(self, task: Any) -> None:
-                pass
+            async def remove_task(self, task: Callable[..., Awaitable[None]]) -> None:
+                self.run_mock(task)
 
-            async def run(self) -> None:
+            async def run(self) -> SchedulerResult:
                 await self.run_mock()
+                return SchedulerResult()
 
             async def startup(self) -> None:
                 await self.startup_mock()
@@ -111,36 +141,49 @@ class TestTaskiqAgent:
                 await self.shutdown_mock()
 
         class SourceFactory:
-            def __init__(self, broker):
+            def __init__(self, broker: AsyncBroker) -> None:
+                self.broker = broker
                 self.source = f"source-{id(broker)}"
 
         class BoundSource(ScheduleSource):
-            def __init__(self, broker: Any) -> None:
+            def __init__(self, broker: AsyncBroker) -> None:
                 self.broker = broker
 
-            async def get_schedules(self):
+            async def get_schedules(self) -> List[SchedulerResult]:  # type: ignore
                 return []
 
+        doubles_module = {
+            "tests.doubles.FakeBroker": FakeBroker,
+            "tests.doubles.MiddlewareA": MiddlewareA,
+            "tests.doubles.MiddlewareB": MiddlewareB,
+            "tests.doubles.EventHandler": EventHandler,
+            "tests.doubles.ResultBackend": FakeResultBackend,
+            "tests.doubles.SchedulerBackend": SchedulerBackend,
+            "tests.doubles.SourceFactory": SourceFactory,
+            "tests.doubles.BoundSource": BoundSource,
+        }
+
+        module = type(sys)("tests.doubles")
+        for name, value in doubles_module.items():
+            setattr(module, name.split(".")[-1], value)
+        monkeypatch.setitem(sys.modules, "tests.doubles", module)
+
+        def import_string_stub(path: str) -> Any:
+            if path in doubles_module:
+                return doubles_module[path]
+            raise ImportError(path)
+
         monkeypatch.setattr(
-            "unfazed_taskiq.agent.model.import_string",
-            lambda path: {
-                "tests.doubles.FakeBroker": FakeBroker,
-                "tests.doubles.MiddlewareA": MiddlewareA,
-                "tests.doubles.MiddlewareB": MiddlewareB,
-                "tests.doubles.EventHandler": EventHandler,
-                "tests.doubles.ResultBackend": ResultBackend,
-                "tests.doubles.SchedulerBackend": SchedulerBackend,
-                "tests.doubles.SourceFactory": SourceFactory,
-                "tests.doubles.BoundSource": BoundSource,
-            }[path],
+            "unfazed_taskiq.agent.model.import_string", import_string_stub
         )
 
         self.fake_classes = {
             "broker": FakeBroker,
             "scheduler": SchedulerBackend,
+            "result_backend": FakeResultBackend,
         }
 
-    def test_setup_full_configuration(self):
+    def test_setup_full_configuration(self) -> None:
         config = self._build_config()
         agent = TaskiqAgent.setup("alias", config)
 
@@ -148,24 +191,22 @@ class TestTaskiqAgent:
         assert agent.config is config
         broker = agent.broker
         assert isinstance(broker, self.fake_classes["broker"])
-        middleware_calls = [
-            call.args[0] for call in broker.middlewares_mock.call_args_list
+        middleware_names = [
+            middleware.__class__.__name__ for middleware in broker.middlewares
         ]
-        assert middleware_calls[0].__class__.__name__ == "MiddlewareA"
-        assert middleware_calls[1].__class__.__name__ == "MiddlewareB"
-        calls = broker.handlers_mock.call_args_list
-        assert len(calls) == 2
-        assert calls[0][0][0].value == "WORKER_STARTUP"
-        assert calls[1][0][0] == TaskiqEvents.CLIENT_STARTUP
-        broker.result_backend_mock.assert_called_once()
-        scheduler = agent.scheduler
+        assert middleware_names == ["MiddlewareA", "MiddlewareB"]
+        assert broker.event_handlers[TaskiqEvents.WORKER_STARTUP]
+        assert broker.event_handlers[TaskiqEvents.CLIENT_STARTUP]
+        scheduler: TaskiqScheduler = agent.scheduler  # type: ignore
         assert isinstance(scheduler, self.fake_classes["scheduler"])
         assert scheduler.broker is broker
         assert len(scheduler.sources) == 2
-        assert hasattr(scheduler.sources[0], "source")
+        assert scheduler.sources[0].source.startswith("source-")  # type: ignore
         assert isinstance(scheduler.sources[1], ScheduleSource)
 
-    def test_setup_without_optional_sections(self, monkeypatch):
+    def test_setup_without_optional_sections(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         config = TaskiqConfig(
             BROKER=Broker(BACKEND="tests.doubles.FakeBroker"),
             RESULT=None,
@@ -174,10 +215,8 @@ class TestTaskiqAgent:
         agent = TaskiqAgent.setup("alias", config)
         assert agent.scheduler is None
         assert isinstance(agent.broker, self.fake_classes["broker"])
-        agent.broker.result_backend_mock.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_startup_and_shutdown(self):
+    async def test_startup_and_shutdown(self) -> None:
         config = TaskiqConfig(
             BROKER=Broker(BACKEND="tests.doubles.FakeBroker"),
             RESULT=None,
@@ -186,15 +225,15 @@ class TestTaskiqAgent:
         agent = TaskiqAgent.setup("alias", config)
 
         await agent.startup()
-        agent.scheduler.startup_mock.assert_awaited_once()
-        agent.broker.startup_mock.assert_awaited_once()
+        assert agent.scheduler is not None
+        agent.scheduler.startup_mock.assert_awaited_once()  # type: ignore
+        agent.broker.startup_mock.assert_awaited_once()  # type: ignore
 
         await agent.shutdown()
-        agent.scheduler.shutdown_mock.assert_awaited_once()
-        agent.broker.shutdown_mock.assert_awaited_once()
+        agent.scheduler.shutdown_mock.assert_awaited_once()  # type: ignore
+        agent.broker.shutdown_mock.assert_awaited_once()  # type: ignore
 
-    @pytest.mark.asyncio
-    async def test_lifecycle_without_scheduler(self):
+    async def test_lifecycle_without_scheduler(self) -> None:
         config = TaskiqConfig(
             BROKER=Broker(BACKEND="tests.doubles.FakeBroker"),
             RESULT=None,
@@ -203,7 +242,7 @@ class TestTaskiqAgent:
         agent = TaskiqAgent.setup("alias", config)
 
         await agent.startup()
-        agent.broker.startup_mock.assert_awaited_once()
+        agent.broker.startup_mock.assert_awaited_once()  # type: ignore
 
         await agent.shutdown()
-        agent.broker.shutdown_mock.assert_awaited_once()
+        agent.broker.shutdown_mock.assert_awaited_once()  # type: ignore

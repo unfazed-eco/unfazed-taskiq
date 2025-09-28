@@ -45,7 +45,9 @@ class TaskiqAgent(BaseModel):
         # setup scheduler
         scheduler = None
         if config.scheduler:
-            scheduler_cls: TaskiqScheduler = import_string(config.scheduler.backend)
+            scheduler_cls: type[TaskiqScheduler] = import_string(
+                config.scheduler.backend
+            )
             scheduler_sources = config.scheduler.sources or []
             sources: List[ScheduleSource] = []
             for source in scheduler_sources:

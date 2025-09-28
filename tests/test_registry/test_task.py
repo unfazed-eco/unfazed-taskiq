@@ -1,6 +1,6 @@
 import pytest
 
-from unfazed_taskiq.registry.task import RegistryTask
+from unfazed_taskiq.registry.task import RegistryTask, RegistryTaskSchema
 
 
 def sample_task(x: int, y: str = "hi") -> None:
@@ -22,6 +22,7 @@ class TestRegistryTask:
         )
         path = f"{sample_task.__module__}.{sample_task.__name__}"
         schema = self.registry.get(path)
+        assert isinstance(schema, RegistryTaskSchema)
         assert schema.name == "sample_task"
         assert schema.alias_name == "alpha"
         assert schema.docs == "Sample task used for registry tests."

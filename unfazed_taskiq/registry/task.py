@@ -16,7 +16,7 @@ class RegistryTask(Storage[RegistryTaskSchema]):
         return self.storage.get(path, None)
 
     def filter_path(self, keyword: Optional[str] = None) -> List[RegistryTaskSchema]:
-        res: List[RegistryTask] = []
+        res: List[RegistryTaskSchema] = []
         for k, v in self.storage.items():
             if keyword is None or keyword in k:
                 res.append(v)

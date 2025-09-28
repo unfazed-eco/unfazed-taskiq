@@ -1,17 +1,13 @@
-from unfazed.conf import settings
 from unfazed.core import Unfazed
 from unfazed.lifespan import BaseLifeSpan
 
 from unfazed_taskiq.agent.handler import agent
-from unfazed_taskiq.settings import UnfazedTaskiqSettings
 
 
 class TaskiqLifeSpan(BaseLifeSpan):
     def __init__(self, unfazed: Unfazed) -> None:
         self.unfazed = unfazed
-        taskiq_settings: UnfazedTaskiqSettings = settings["UNFAZED_TASKIQ_SETTINGS"]
-
-        agent.setup(taskiq_settings)
+        agent.setup()
         self.agent = agent
 
     async def on_startup(self) -> None:
