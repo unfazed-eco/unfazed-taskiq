@@ -5,7 +5,6 @@ from taskiq.abc.cmd import TaskiqCMD
 from taskiq.cli.worker.args import WorkerArgs
 from taskiq.cli.worker.run import run_worker
 from unfazed.core import Unfazed
-from unfazed_sentry import agent as sentry_agent
 
 
 class WorkerCMD(TaskiqCMD):
@@ -29,8 +28,6 @@ class WorkerCMD(TaskiqCMD):
         """
         # setup unfazed
         asyncio.run(self.init_unfazed())
-        # setup sentry
-        sentry_agent.setup()
         # setup worker
         wargs: WorkerArgs = WorkerArgs.from_cli(args)
         return run_worker(wargs)

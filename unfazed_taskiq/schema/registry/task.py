@@ -10,9 +10,9 @@ class RegistryTaskParam(BaseModel):
     default: Any
 
 
-class RegistryTask(BaseModel):
+class RegistryTaskSchema(BaseModel):
     name: str
-    broker_name: Optional[str]
+    alias_name: Optional[str]
     params: list[RegistryTaskParam]
     docs: Optional[str]
     schedule: Optional[list[dict[str, Any]]]

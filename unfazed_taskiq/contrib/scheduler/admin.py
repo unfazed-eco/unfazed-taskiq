@@ -10,6 +10,7 @@ class PeriodicTaskAdmin(ModelAdmin):
 
     list_display: list[str] = [
         "schedule_alias",
+        "name",
         "task_name",
         "labels",
         "cron",
@@ -19,11 +20,17 @@ class PeriodicTaskAdmin(ModelAdmin):
     ]
     search_fields: list[str] = [
         "schedule_alias",
+        "name",
         "task_name",
-        "labels",
+    ]
+    list_search: list[str] = [
+        "schedule_alias",
+        "name",
+        "task_name",
     ]
     detail_display: list[str] = [
         "schedule_alias",
+        "name",
         "description",
         "task_name",
         "task_args",

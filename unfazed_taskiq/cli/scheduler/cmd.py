@@ -1,19 +1,16 @@
 import asyncio
-import traceback
+import logging
 from dataclasses import replace
-from logging import getLogger
 from typing import Sequence
 
 from taskiq.abc.cmd import TaskiqCMD
 from taskiq.cli.scheduler.run import run_scheduler
 from unfazed.core import Unfazed
-from unfazed_sentry import capture_exception
 
-from unfazed_taskiq.agent import get_agent
-from unfazed_taskiq.base import TaskiqAgent
+from unfazed_taskiq.agent.handler import agent
 from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
-logger = getLogger(__name__)
+logger = logging.getLogger("unfazed.taskiq")
 
 
 class SchedulerCMD(TaskiqCMD):
@@ -43,24 +40,26 @@ class SchedulerCMD(TaskiqCMD):
         parsed: SchedulerEventArgs = SchedulerEventArgs.from_cli(args)
 
         async def _run_all_scheduler() -> None:
-            agent: TaskiqAgent = get_agent()
             tasks = []
-            try:
-                # if scheduler_alias is not provided, run all schedulers
-                if len(parsed.scheduler_alias) == 0:
-                    parsed.scheduler_alias = list(agent._schedulers.keys())
 
-                # init all schedulers
-                for alias, scheduler_obj in agent._schedulers.items():
-                    if alias in parsed.scheduler_alias:
-                        event_parsed = replace(parsed, scheduler=scheduler_obj)
-                        tasks.append(asyncio.create_task(run_scheduler(event_parsed)))
+            # Get all agent models with schedulers
+            schedulers = {}
+            for alias, agent_model in agent.storage.items():
+                if agent_model.scheduler is not None:
+                    schedulers[alias] = agent_model.scheduler
 
-                # run all schedulers
-                if tasks:
-                    await asyncio.gather(*tasks)
-            except Exception as e:
-                capture_exception(e)
-                logger.error(f"Failed to start scheduler: {traceback.format_exc()}")
+            # if scheduler_alias is not provided, run all schedulers
+            if len(parsed.scheduler_alias) == 0:
+                parsed.scheduler_alias = list(schedulers.keys())
+
+            # init all schedulers
+            for alias, scheduler_obj in schedulers.items():
+                if alias in parsed.scheduler_alias:
+                    event_parsed = replace(parsed, scheduler=scheduler_obj)
+                    tasks.append(asyncio.create_task(run_scheduler(event_parsed)))
+
+            # run all schedulers
+            if tasks:
+                await asyncio.gather(*tasks)
 
         asyncio.run(_run_all_scheduler())

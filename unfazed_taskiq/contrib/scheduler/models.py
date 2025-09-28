@@ -24,6 +24,12 @@ class PeriodicTask(BaseModel):
         default="default",
     )
 
+    name = fields.CharField(
+        max_length=255,
+        default="NOT_GIVEN",
+        description="The name of the task. eg: FF-SG-YOUTUBE",
+    )
+
     description = fields.TextField(
         description="The description of the task.",
         default="",

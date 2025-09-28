@@ -34,7 +34,6 @@ class TestWorkerCMD(object):
         with (
             patch("unfazed_taskiq.cli.worker.cmd.WorkerArgs") as mock_worker_args,
             patch("unfazed_taskiq.cli.worker.cmd.asyncio.run") as mock_asyncio_run,
-            patch("unfazed_taskiq.cli.worker.cmd.sentry_agent") as mock_sentry_agent,
             patch("unfazed_taskiq.cli.worker.cmd.run_worker") as mock_run_worker,
         ):
             # Setup mocks
@@ -61,7 +60,6 @@ class TestWorkerCMD(object):
 
             # Verify calls
             mock_asyncio_run.assert_called_once()
-            mock_sentry_agent.setup.assert_called_once()
             mock_worker_args.from_cli.assert_called_once_with(args)
             mock_run_worker.assert_called_once_with(mock_worker_args_instance)
 

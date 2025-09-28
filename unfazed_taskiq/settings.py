@@ -1,4 +1,3 @@
-import os
 import typing as t
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,9 +10,8 @@ class Broker(BaseModel):
     backend: str = Field(alias="BACKEND")
     options: t.Optional[t.Dict[str, t.Any]] = Field(default=None, alias="OPTIONS")
     middlewares: t.List[str] = Field(
-        default=["unfazed_taskiq.middleware.UnfazedTaskiqExceptionMiddleware"],
-        alias="MIDDLEWARES",
-    )
+        default=[], alias="MIDDLEWARES"
+    )  # unfazed_taskiq.middleware.UnfazedTaskiqExceptionMiddleware
     handlers: t.List[t.Dict[str, t.Union[str, TaskiqEvents]]] = Field(
         default=[], alias="HANDLERS"
     )
@@ -42,7 +40,6 @@ class TaskiqConfig(BaseModel):
 @register_settings("UNFAZED_TASKIQ_SETTINGS")
 class UnfazedTaskiqSettings(BaseModel):
     taskiq_config: t.Dict[str, TaskiqConfig] = Field(alias="TASKIQ_CONFIG")
-    default_taskiq_name: t.Optional[str] = Field(
-        alias="DEFAULT_TASKIQ_NAME",
-        default=os.environ.get("DEFAULT_TASKIQ_NAME", None),
+    default_alias_name: t.Optional[str] = Field(
+        alias="DEFAULT_ALIAS_NAME", default="default"
     )

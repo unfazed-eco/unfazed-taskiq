@@ -6,7 +6,7 @@ from taskiq import TaskiqMessage, TaskiqResult
 from taskiq.abc.middleware import TaskiqMiddleware
 from unfazed_sentry import capture_exception
 
-logger = logging.getLogger("unfazed_taskiq")
+logger = logging.getLogger("unfazed.taskiq")
 
 
 class UnfazedTaskiqExceptionMiddleware(TaskiqMiddleware):

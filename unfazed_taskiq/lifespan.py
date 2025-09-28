@@ -2,8 +2,8 @@ from unfazed.conf import settings
 from unfazed.core import Unfazed
 from unfazed.lifespan import BaseLifeSpan
 
-from .base import agent
-from .settings import UnfazedTaskiqSettings
+from unfazed_taskiq.agent.handler import agent
+from unfazed_taskiq.settings import UnfazedTaskiqSettings
 
 
 class TaskiqLifeSpan(BaseLifeSpan):

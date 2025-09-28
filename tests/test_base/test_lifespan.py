@@ -31,23 +31,18 @@ class TestTaskiqLifeSpan:
             },
         )
 
-        with (
-            patch("unfazed_taskiq.lifespan.settings") as mock_settings_obj,
-            patch("unfazed_taskiq.lifespan.agent") as mock_agent,
-        ):
-            mock_settings_obj.__getitem__.return_value = mock_taskiq_settings
+        with patch("unfazed_taskiq.lifespan.settings") as settings_mock:
+            with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+                settings_mock.__getitem__.return_value = mock_taskiq_settings
 
-            # Create TaskiqLifeSpan instance
-            lifespan = TaskiqLifeSpan(mock_unfazed)
+                lifespan = TaskiqLifeSpan(mock_unfazed)
 
-            # Verify initialization
-            assert lifespan.unfazed is mock_unfazed
-            assert lifespan.agent is mock_agent
+                assert lifespan.unfazed is mock_unfazed
+                assert lifespan.agent is agent_mock
 
-            # Verify agent.setup was called with correct settings
-            mock_agent.setup.assert_called_once()
-            call_args = mock_agent.setup.call_args[0][0]
-            assert isinstance(call_args, UnfazedTaskiqSettings)
+                agent_mock.setup.assert_called_once()
+                call_args = agent_mock.setup.call_args[0][0]
+                assert isinstance(call_args, UnfazedTaskiqSettings)
 
     async def test_taskiq_lifespan_on_startup(self) -> None:
         """Test TaskiqLifeSpan on_startup method."""
@@ -65,21 +60,16 @@ class TestTaskiqLifeSpan:
             },
         )
 
-        with (
-            patch("unfazed_taskiq.lifespan.settings") as mock_settings_obj,
-            patch("unfazed_taskiq.lifespan.agent") as mock_agent,
-        ):
-            mock_settings_obj.__getitem__.return_value = mock_taskiq_settings
-            mock_agent.startup = AsyncMock()
+        with patch("unfazed_taskiq.lifespan.settings") as settings_mock:
+            with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+                settings_mock.__getitem__.return_value = mock_taskiq_settings
+                agent_mock.startup = AsyncMock()
 
-            # Create TaskiqLifeSpan instance
-            lifespan = TaskiqLifeSpan(mock_unfazed)
+                lifespan = TaskiqLifeSpan(mock_unfazed)
 
-            # Call on_startup
-            await lifespan.on_startup()
+                await lifespan.on_startup()
 
-            # Verify agent.startup was called
-            mock_agent.startup.assert_called_once()
+                agent_mock.startup.assert_called_once()
 
     async def test_taskiq_lifespan_on_shutdown(self) -> None:
         """Test TaskiqLifeSpan on_shutdown method."""
@@ -97,18 +87,13 @@ class TestTaskiqLifeSpan:
             },
         )
 
-        with (
-            patch("unfazed_taskiq.lifespan.settings") as mock_settings_obj,
-            patch("unfazed_taskiq.lifespan.agent") as mock_agent,
-        ):
-            mock_settings_obj.__getitem__.return_value = mock_taskiq_settings
-            mock_agent.shutdown = AsyncMock()
+        with patch("unfazed_taskiq.lifespan.settings") as settings_mock:
+            with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+                settings_mock.__getitem__.return_value = mock_taskiq_settings
+                agent_mock.shutdown = AsyncMock()
 
-            # Create TaskiqLifeSpan instance
-            lifespan = TaskiqLifeSpan(mock_unfazed)
+                lifespan = TaskiqLifeSpan(mock_unfazed)
 
-            # Call on_shutdown
-            await lifespan.on_shutdown()
+                await lifespan.on_shutdown()
 
-            # Verify agent.shutdown was called
-            mock_agent.shutdown.assert_called_once()
+                agent_mock.shutdown.assert_called_once()

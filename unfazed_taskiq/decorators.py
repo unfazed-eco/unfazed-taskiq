@@ -1,18 +1,14 @@
-import inspect
-from typing import Any, Callable, Optional, get_type_hints
+from typing import Any, Callable, Optional
 
-from taskiq import AsyncBroker
-
-from unfazed_taskiq.agent import get_agent
-from unfazed_taskiq.base import TaskiqAgent
-from unfazed_taskiq.registry import rs
-from unfazed_taskiq.schema.registry import RegistryTask, RegistryTaskParam
+from unfazed_taskiq.agent.handler import agent
+from unfazed_taskiq.agent.model import TaskiqAgent
+from unfazed_taskiq.registry.task import rs
 
 
 def task(
     func: Optional[Callable] = None,
     *,
-    broker_name: Optional[str] = None,
+    alias_name: Optional[str] = None,
     **task_kwargs: Any,
 ) -> Callable:
     """
@@ -20,7 +16,7 @@ def task(
 
     Args:
         func: function to decorate (when used without parentheses)
-        broker_name: broker name, if None, use default broker
+        alias_name: alias name, if None, use default alias
         **task_kwargs: other arguments for taskiq task decorator
 
     Example:
@@ -28,64 +24,22 @@ def task(
         async def simple_task():
             pass
 
-        @task(broker_name="high_priority")
+        @task(alias_name="high_priority")
         async def high_priority_task():
             pass
 
-        @task(broker_name="low_priority", schedule=[{"cron": "*/5 * * * *"}])
+        @task(alias_name="low_priority", schedule=[{"cron": "*/5 * * * *"}])
         async def scheduled_task():
             pass
     """
 
-    def register_broker(
-        func: Callable,
-        broker_name: Optional[str],
-        **kwargs: Any,
-    ) -> Any:
-        params_info: list[RegistryTaskParam] = []
-        sig = inspect.signature(func)
-        type_hints = get_type_hints(func)
-        for name, param in sig.parameters.items():
-            param_type = type_hints.get(name, Any)
-            required = param.default is inspect.Parameter.empty
-            default = None if required else param.default
-
-            params_info.append(
-                RegistryTaskParam(
-                    **{
-                        "name": name,
-                        "hint_type": param_type,
-                        "required": required,
-                        "default": default,
-                    }
-                )
-            )
-        registry_task: RegistryTask = RegistryTask(
-            name=func.__name__,
-            broker_name=broker_name,
-            params=params_info,
-            docs=func.__doc__ or "",
-            schedule=task_kwargs.get("schedule", None),
-        )
-
-        task_path = f"{func.__module__}.{func.__name__}"
-
-        rs.register(task_path, registry_task)
-
     def decorator(func: Callable) -> Callable:
-        # get agent & broker
-        agent: TaskiqAgent = get_agent()
-        broker: AsyncBroker = agent.get_broker(broker_name)
-
-        # get real broker name
-        real_broker_name: str = (
-            agent._default_taskiq_name if broker_name is None else broker_name  # type: ignore
-        )
-
-        register_broker(func, real_broker_name, **task_kwargs)
-
+        _agent: Optional[TaskiqAgent] = agent.get_agent(alias_name)
+        rs.register_broker(func, alias_name, **task_kwargs)
         # decorate task
-        return broker.task(**task_kwargs)(func)
+        if _agent is None:
+            raise ValueError(f"Agent {alias_name} not found")
+        return _agent.broker.task(**task_kwargs)(func)
 
     # Support @task and @task()
     return decorator if func is None else decorator(func)

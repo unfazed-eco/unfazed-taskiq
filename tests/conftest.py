@@ -14,7 +14,7 @@ from unfazed.core import Unfazed
 
 from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("unfazed.taskiq")
 
 
 # dont need decorate test functions with pytest.mark.asyncio
@@ -29,6 +29,14 @@ def pytest_collection_modifyitems(items: t.List[Item]) -> None:
 # use this fixture in your test functions
 @pytest.fixture(autouse=True, scope="function")
 async def unfazed() -> t.AsyncGenerator[Unfazed, None]:
+    # Clear task registry before each test
+    from unfazed_taskiq.agent import agent
+    from unfazed_taskiq.registry.task import rs
+
+    rs.clear()
+    agent.reset()
+    agent.check_ready()
+
     root_path = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(root_path)
     os.environ.setdefault("UNFAZED_SETTINGS_MODULE", "tests.proj.entry.settings")
