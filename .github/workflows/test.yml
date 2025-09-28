@@ -49,6 +49,10 @@ jobs:
         run: make test
         env:
           UNFAZED_SETTINGS_MODULE: "tests.proj.entry.settings"
+          MYSQL_HOST: "127.0.0.1"
+          MYSQL_PORT: "3306"        
+          MYSQL_USER: "root"
+          MYSQL_PASSWORD: app
           REDIS_HOST: "localhost"
           RABBITMQ_HOST: "localhost"
 
