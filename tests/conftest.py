@@ -30,12 +30,12 @@ def pytest_collection_modifyitems(items: t.List[Item]) -> None:
 @pytest.fixture(autouse=True, scope="function")
 async def unfazed() -> t.AsyncGenerator[Unfazed, None]:
     # Clear task registry before each test
-    from unfazed_taskiq.agent import agent
+    from unfazed_taskiq.agent import agents
     from unfazed_taskiq.registry.task import rs
 
     rs.clear()
-    agent.reset()
-    agent.check_ready()
+    agents.reset()
+    agents.check_ready()
 
     root_path = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(root_path)

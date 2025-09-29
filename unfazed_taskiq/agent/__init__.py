@@ -1,3 +1,3 @@
-from unfazed_taskiq.agent.handler import agent, broker, scheduler
+from unfazed_taskiq.agent.handler import agents, broker, scheduler
 
-__all__ = ["agent", "broker", "scheduler"]
+__all__ = ["agents", "broker", "scheduler"]

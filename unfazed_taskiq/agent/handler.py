@@ -87,6 +87,6 @@ class AgentHandler(Storage[TaskiqAgent]):
             await agent_model.shutdown()
 
 
-agent = AgentHandler()
-scheduler = agent.scheduler
-broker = agent.broker
+agents = AgentHandler()
+scheduler = agents.scheduler
+broker = agents.broker

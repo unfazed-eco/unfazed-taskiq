@@ -35,7 +35,7 @@ def test_task_decorator_with_parameters(monkeypatch: pytest.MonkeyPatch) -> None
     def fake_register(func: Any, alias_name: str, **kwargs: Any) -> None:
         register_calls.append((func, alias_name, kwargs))
 
-    monkeypatch.setattr(decorators.agent, "get_agent", fake_get_agent)
+    monkeypatch.setattr(decorators.agents, "get_agent", fake_get_agent)
     monkeypatch.setattr(decorators.rs, "register_broker", fake_register)
 
     @decorators.task(alias_name="alpha", schedule=[{"cron": "* * * * *"}])
@@ -55,7 +55,7 @@ def test_task_decorator_without_parameters(monkeypatch: pytest.MonkeyPatch) -> N
     agent = SimpleNamespace(broker=broker)
     register_calls = []
 
-    monkeypatch.setattr(decorators.agent, "get_agent", lambda alias_name: agent)
+    monkeypatch.setattr(decorators.agents, "get_agent", lambda alias_name: agent)
     monkeypatch.setattr(
         decorators.rs,
         "register_broker",
@@ -77,7 +77,7 @@ def test_task_decorator_missing_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_register(_: Any, alias_name: str, **kwargs: Any) -> None:
         register_calls.append((alias_name, kwargs))
 
-    monkeypatch.setattr(decorators.agent, "get_agent", lambda alias_name: None)
+    monkeypatch.setattr(decorators.agents, "get_agent", lambda alias_name: None)
     monkeypatch.setattr(decorators.rs, "register_broker", fake_register)
 
     def ghost_task() -> str:

@@ -1,6 +1,6 @@
 from typing import Any, Callable, Optional
 
-from unfazed_taskiq.agent.handler import agent
+from unfazed_taskiq.agent.handler import agents
 from unfazed_taskiq.agent.model import TaskiqAgent
 from unfazed_taskiq.registry.task import rs
 
@@ -34,7 +34,7 @@ def task(
     """
 
     def decorator(func: Callable) -> Callable:
-        _agent: Optional[TaskiqAgent] = agent.get_agent(alias_name)
+        _agent: Optional[TaskiqAgent] = agents.get_agent(alias_name)
         rs.register_broker(func, alias_name, **task_kwargs)
         # decorate task
         if _agent is None:

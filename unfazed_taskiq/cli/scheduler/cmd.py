@@ -7,7 +7,7 @@ from taskiq.abc.cmd import TaskiqCMD
 from taskiq.cli.scheduler.run import run_scheduler
 from unfazed.core import Unfazed
 
-from unfazed_taskiq.agent.handler import agent
+from unfazed_taskiq.agent.handler import agents
 from unfazed_taskiq.cli.scheduler.args import SchedulerEventArgs
 
 logger = logging.getLogger("unfazed.taskiq")
@@ -44,7 +44,7 @@ class SchedulerCMD(TaskiqCMD):
 
             # Get all agent models with schedulers
             schedulers = {}
-            for alias, agent_model in agent.storage.items():
+            for alias, agent_model in agents.storage.items():
                 if agent_model.scheduler is not None:
                     schedulers[alias] = agent_model.scheduler
 

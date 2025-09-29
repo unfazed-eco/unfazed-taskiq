@@ -42,7 +42,7 @@ class TestSchedulerCMD:
                 "unfazed_taskiq.cli.scheduler.cmd.SchedulerEventArgs.from_cli",
                 return_value=parsed,
             ),
-            patch("unfazed_taskiq.cli.scheduler.cmd.agent.storage", agents),
+            patch("unfazed_taskiq.cli.scheduler.cmd.agents.storage", agents),
             patch("unfazed_taskiq.cli.scheduler.cmd.run_scheduler", run_spy),
             patch("asyncio.create_task", side_effect=lambda coro: coro),
         ):

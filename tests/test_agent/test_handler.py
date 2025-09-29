@@ -55,9 +55,9 @@ class TestAgentHandler:
         return handler
 
     def test_module_singletons(self, handler_module: Any) -> None:
-        alias = handler_module.agent.default_alias_name
-        assert handler_module.scheduler == handler_module.agent.storage[alias].scheduler
-        assert handler_module.broker == handler_module.agent.storage[alias].broker
+        alias = handler_module.agents.default_alias_name
+        assert handler_module.scheduler == handler_module.agents.storage[alias].scheduler
+        assert handler_module.broker == handler_module.agents.storage[alias].broker
 
     def test_init_triggers_check_ready(self, handler_module: Any) -> None:
         handler_cls = handler_module.AgentHandler
@@ -70,11 +70,11 @@ class TestAgentHandler:
         self, handler_module: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         handler = self._make_handler(handler_module, monkeypatch)
-        agent = MagicMock()
-        handler.register("alpha", agent)
-        assert handler.storage["alpha"] is agent
+        agents = MagicMock()
+        handler.register("alpha", agents)
+        assert handler.storage["alpha"] is agents
         with pytest.raises(ValueError, match="already registered"):
-            handler.register("alpha", agent)
+            handler.register("alpha", agents)
 
     def test_reset(self, handler_module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
         handler = self._make_handler(handler_module, monkeypatch)
@@ -198,10 +198,10 @@ class TestAgentHandler:
     ) -> None:
         handler = self._make_handler(handler_module, monkeypatch)
         handler.default_alias_name = "alpha"
-        sentinel_agent = MagicMock()
-        handler.storage["alpha"] = sentinel_agent
+        sentinel_agents = MagicMock()
+        handler.storage["alpha"] = sentinel_agents
         handler._ready = True
-        assert handler.get_agent(None) is sentinel_agent
+        assert handler.get_agent(None) is sentinel_agents
         assert handler.get_agent("missing") is None
 
     def test_get_agent_triggers_ready(

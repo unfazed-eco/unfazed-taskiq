@@ -17,13 +17,13 @@ class TestTaskiqLifeSpan:
         """Test TaskiqLifeSpan initialization."""
         mock_unfazed = MagicMock()
 
-        with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+        with patch("unfazed_taskiq.lifespan.agents") as agent_mock:
             agent_mock.setup.return_value = None
 
             lifespan = TaskiqLifeSpan(mock_unfazed)
 
             assert lifespan.unfazed is mock_unfazed
-            assert lifespan.agent is agent_mock
+            assert lifespan.agents is agent_mock
 
             agent_mock.setup.assert_called_once_with()
 
@@ -31,7 +31,7 @@ class TestTaskiqLifeSpan:
         """Test TaskiqLifeSpan on_startup method."""
         mock_unfazed = MagicMock()
 
-        with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+        with patch("unfazed_taskiq.lifespan.agents") as agent_mock:
             agent_mock.setup.return_value = None
             agent_mock.startup = AsyncMock()
 
@@ -45,7 +45,7 @@ class TestTaskiqLifeSpan:
         """Test TaskiqLifeSpan on_shutdown method."""
         mock_unfazed = MagicMock()
 
-        with patch("unfazed_taskiq.lifespan.agent") as agent_mock:
+        with patch("unfazed_taskiq.lifespan.agents") as agent_mock:
             agent_mock.setup.return_value = None
             agent_mock.shutdown = AsyncMock()
 
