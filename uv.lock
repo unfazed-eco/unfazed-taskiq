@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 
 [[package]]
@@ -938,7 +938,7 @@ requires-dist = [
     { name = "aiomysql", specifier = ">=0.2.0" },
     { name = "taskiq", specifier = ">=0.11.16" },
     { name = "taskiq-aio-pika", specifier = ">=0.4.2" },
-    { name = "unfazed", specifier = "==0.0.15" },
+    { name = "unfazed", specifier = ">=0.0.15" },
     { name = "unfazed-sentry", specifier = ">=0.0.2" },
 ]
 
