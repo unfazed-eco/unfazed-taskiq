@@ -99,6 +99,9 @@ UNFAZED_TASKIQ_SETTINGS = {
                     "exchange_name": "unfazedtaskiq",
                     "queue_name": "unfazedtaskiq",
                 },
+                "MIDDLEWARES": { # options: if you want use sentry collect error
+                    "unfazed_taskiq.middleware.UnfazedTaskiqExceptionMiddleware"
+                }
             },
             "SCHEDULER": {
                 "SOURCES": [unfazedtaskiq_source],
