@@ -19,7 +19,7 @@ class SchedulerEventArgs(SchedulerArgs):
     tasks_pattern: Sequence[str] = ("**/tasks.py",)
     skip_first_run: bool = False
     update_interval: Optional[int] = None
-    scheduler_alias: Sequence[str] = ()
+    alias_name: Sequence[str] = ()
 
     @classmethod
     def from_cli(cls, args: Optional[Sequence[str]] = None) -> "SchedulerEventArgs":
@@ -93,8 +93,8 @@ class SchedulerEventArgs(SchedulerArgs):
             ),
         )
         parser.add_argument(
-            "--scheduler-alias",
-            "-sa",
+            "--alias-name",
+            "-an",
             default=[],
             action="append",
             help="should run the scheduler with the given alias",

@@ -87,6 +87,8 @@ from unfazed_taskiq.contrib.scheduler.sources import TortoiseScheduleSource
 
 AMQP_URL = os.getenv("AMQP_URL", DEFAULT_AMQP_URL)
 unfazedtaskiq_source = TortoiseScheduleSource(schedule_alias="unfazedtaskiq")
+unfazedtaskiq_v2_source = TortoiseScheduleSource(schedule_alias="unfazedtaskiq_v2")
+
 # entry/settings.py
 UNFAZED_TASKIQ_SETTINGS = {
     "DEFAULT_TASKIQ_NAME": "default",
@@ -105,6 +107,23 @@ UNFAZED_TASKIQ_SETTINGS = {
             },
             "SCHEDULER": {
                 "SOURCES": [unfazedtaskiq_source],
+                "BACKEND": "taskiq.TaskiqScheduler",
+            },
+        },
+        "taskiq_task": {
+            "BROKER": {
+                "BACKEND": "taskiq_aio_pika.AioPikaBroker",
+                "OPTIONS": {
+                    "url": AMQP_URL,
+                    "exchange_name": "unfazedtaskiq_v2",
+                    "queue_name": "unfazedtaskiq_v2",
+                },
+                "MIDDLEWARES": { # options: if you want use sentry collect error
+                    "unfazed_taskiq.middleware.UnfazedTaskiqExceptionMiddleware"
+                }
+            },
+            "SCHEDULER": {
+                "SOURCES": [unfazedtaskiq_v2_source],
                 "BACKEND": "taskiq.TaskiqScheduler",
             },
         },
@@ -153,33 +172,25 @@ await PeriodicTask.create(
 )
 ```
 
-### 4. 5. Start Scheduler
+### 4. Start Scheduler
 
 Execute tasks from your application code:
 
-```python
-# In your service/view/handler
-from app.tasks import add_numbers, send_email
+- start all scheduler
+  ```shell
+  uv run taskiq unfazed-scheduler unfazed_taskiq.agent:scheduler
+  ```
+- start scheduler with alias_name (eg: default / taskiq_task)
+  ```shell
+  uv run taskiq unfazed-scheduler unfazed_taskiq.agent:scheduler --alias-name taskiq_task
+  ```
 
-async def your_service():
-    # Execute task immediately
-    result = await add_numbers.kiq(10, 20)
-    print(f"Task result: {result}")
-
-    # Execute task asynchronously (fire and forget)
-    await send_email.kiq(
-        to="user@example.com",
-        subject="Welcome!",
-        body="Welcome to our service!"
-    )
-```
-
-### 5. Start Workers and Scheduler
+### 5. Start Workers
 
 Start the Taskiq worker to process tasks:
 
 ```bash
-uv run taskiq unfazed-scheduler unfazed_taskiq.agent:scheduler
+uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 ```
 
 ## 📖 更多文档

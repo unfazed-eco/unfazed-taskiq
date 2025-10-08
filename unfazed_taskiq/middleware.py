@@ -1,4 +1,3 @@
-import logging
 import traceback
 from typing import Any
 
@@ -6,7 +5,7 @@ from taskiq import TaskiqMessage, TaskiqResult
 from taskiq.abc.middleware import TaskiqMiddleware
 from unfazed_sentry import capture_exception
 
-logger = logging.getLogger("unfazed.taskiq")
+from unfazed_taskiq.logger import log
 
 
 class UnfazedTaskiqExceptionMiddleware(TaskiqMiddleware):
@@ -19,7 +18,7 @@ class UnfazedTaskiqExceptionMiddleware(TaskiqMiddleware):
         capture_exception(exception, result=result, message=message)
         exception_type = type(exception).__name__
 
-        logger.error(
+        log.error(
             f"Task '{message.task_name}' failed with {exception_type}: {exception}",
             extra={
                 "task_name": message.task_name,

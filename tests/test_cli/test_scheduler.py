@@ -23,16 +23,16 @@ class TestSchedulerCMD:
         assert cmd.unfazed is unfazed
 
     def _run_exec(
-        self, scheduler_alias: list[str] | None, storage: dict[str, Any]
+        self, alias_name: list[str] | None, storage: dict[str, Any]
     ) -> MagicMock:
         cmd = SchedulerCMD()
         args = ["module", "pkg"] + (
-            [] if scheduler_alias is None else ["--scheduler-alias", *scheduler_alias]
+            [] if alias_name is None else ["--scheduler-alias", *alias_name]
         )
         parsed = SchedulerEventArgs(
             scheduler="scheduler.path",
             modules=["pkg"],
-            scheduler_alias=[] if scheduler_alias is None else scheduler_alias,
+            alias_name=[] if alias_name is None else alias_name,
         )
         run_spy = AsyncMock()
         agents = {alias: MagicMock(scheduler=sched) for alias, sched in storage.items()}
@@ -74,10 +74,10 @@ class TestSchedulerEventArgs:
             tasks_pattern=("**/tasks.py", "**/jobs.py"),
             skip_first_run=True,
             update_interval=10,
-            scheduler_alias=("alpha",),
+            alias_name=("alpha",),
         )
         assert not args.configure_logging
-        assert args.scheduler_alias == ("alpha",)
+        assert args.alias_name == ("alpha",)
 
     def test_from_cli_parsing(self) -> None:
         args = SchedulerEventArgs.from_cli(
@@ -93,20 +93,18 @@ class TestSchedulerEventArgs:
                 "--skip-first-run",
                 "--update-interval",
                 "30",
-                "--scheduler-alias",
+                "--alias-name",
                 "alpha",
             ]
         )
         assert args.modules == ["module"]
         assert args.tasks_pattern == ["**/jobs.py"]
-        assert args.scheduler_alias == ["alpha"]
+        assert args.alias_name == ["alpha"]
         assert args.update_interval == 30
 
     def test_replace(self) -> None:
         original = SchedulerEventArgs(scheduler="a", modules=["m"])
-        updated = replace(
-            original, log_level=LogLevel.WARNING.name, scheduler_alias=("x",)
-        )
+        updated = replace(original, log_level=LogLevel.WARNING.name, alias_name=("x",))
         assert updated.log_level == LogLevel.WARNING.name
         assert original.log_level == LogLevel.INFO.name
-        assert updated.scheduler_alias == ("x",)
+        assert updated.alias_name == ("x",)

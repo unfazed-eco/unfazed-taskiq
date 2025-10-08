@@ -13,7 +13,7 @@ class WorkerCMD(TaskiqCMD):
     short_help = "Helper to run workers"
 
     async def init_unfazed(self) -> None:
-        self.unfazed = Unfazed()
+        self.unfazed = Unfazed(silent=True)
         await self.unfazed.setup()
 
     def exec(self, args: Sequence[str]) -> Optional[int]:

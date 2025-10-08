@@ -1,4 +1,3 @@
-import logging
 import typing as t
 from datetime import datetime
 
@@ -11,9 +10,8 @@ from tortoise.expressions import F
 from unfazed.conf import UnfazedSettings, settings
 from unfazed.utils import import_string
 
-from . import models as m
-
-logger = logging.getLogger("unfazed_taskiq")
+from unfazed_taskiq.contrib.scheduler import models as m
+from unfazed_taskiq.logger import log
 
 
 class TortoiseScheduleSource(ScheduleSource):
@@ -57,7 +55,7 @@ class TortoiseScheduleSource(ScheduleSource):
 
         self.alias: BaseDBAsyncClient = Tortoise.get_connection(self._alias)
 
-        logger.info("TortoiseScheduleSource startup")
+        log.info("TortoiseScheduleSource startup")
 
     async def shutdown(self) -> None:
         """Actions to execute during shutdown."""
@@ -65,7 +63,7 @@ class TortoiseScheduleSource(ScheduleSource):
             handler_cls = import_string(handler)
             await maybe_awaitable(handler_cls())
 
-        logger.info("MysqlScheduleSource shutdown")
+        log.info("MysqlScheduleSource shutdown")
 
     async def get_schedules(self) -> t.List["ScheduledTask"]:
         """Get list of taskiq schedules."""

@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import Optional
 
@@ -7,8 +6,6 @@ from unfazed.utils import Storage, import_setting
 
 from unfazed_taskiq.agent.model import TaskiqAgent
 from unfazed_taskiq.settings import UnfazedTaskiqSettings
-
-logger = logging.getLogger("unfazed.taskiq")
 
 
 class AgentHandler(Storage[TaskiqAgent]):

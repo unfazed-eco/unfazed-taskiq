@@ -56,7 +56,9 @@ class TestAgentHandler:
 
     def test_module_singletons(self, handler_module: Any) -> None:
         alias = handler_module.agents.default_alias_name
-        assert handler_module.scheduler == handler_module.agents.storage[alias].scheduler
+        assert (
+            handler_module.scheduler == handler_module.agents.storage[alias].scheduler
+        )
         assert handler_module.broker == handler_module.agents.storage[alias].broker
 
     def test_init_triggers_check_ready(self, handler_module: Any) -> None:

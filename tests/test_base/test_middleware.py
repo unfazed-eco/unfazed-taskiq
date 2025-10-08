@@ -42,7 +42,7 @@ class TestUnfazedTaskiqExceptionMiddleware:
     async def test_on_error_logs_error_with_correct_format(self) -> None:
         """Test that on_error logs error with correct format and extra data."""
         with patch("unfazed_taskiq.middleware.capture_exception"):
-            with patch("unfazed_taskiq.middleware.logger") as mock_logger:
+            with patch("unfazed_taskiq.middleware.log") as mock_logger:
                 await self.middleware.on_error(
                     self.mock_message, self.mock_result, self.test_exception
                 )
