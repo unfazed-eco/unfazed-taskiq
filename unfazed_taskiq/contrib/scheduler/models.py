@@ -67,6 +67,7 @@ class PeriodicTask(BaseModel):
 
     last_run_at = fields.DatetimeField(
         null=True,
+        default="1970-01-01 00:00:00",
         description="The last time the task was run.",
     )
     total_run_count = fields.IntField(

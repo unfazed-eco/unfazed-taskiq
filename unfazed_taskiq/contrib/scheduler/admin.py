@@ -11,10 +11,14 @@ class PeriodicTaskAdmin(ModelAdmin):
     list_display: list[str] = [
         "schedule_alias",
         "name",
+        "description",
         "task_name",
+        "task_args",
+        "task_kwargs",
         "labels",
         "cron",
         "last_run_at",
+        "time",
         "total_run_count",
         "enabled",
     ]
