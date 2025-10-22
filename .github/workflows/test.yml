@@ -14,10 +14,29 @@ jobs:
         env:
           RABBITMQ_DEFAULT_USER: guest
           RABBITMQ_DEFAULT_PASS: guest
-        ports: ['5672:5672', '15672:15672']
+        ports: ["5672:5672", "15672:15672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis
-        ports: ['6379:6379']
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:5.7
+        ports: ["3306:3306"]
+        env:
+          MYSQL_ROOT_PASSWORD: app
+          MYSQL_DATABASE: app
+          MYSQL_USER: app
+          MYSQL_PASSWORD: app
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     name: "Python ${{ matrix.python-version }}"
     runs-on: "ubuntu-latest"
 
@@ -41,6 +60,9 @@ jobs:
         run: make test
         env:
           UNFAZED_SETTINGS_MODULE: "tests.proj.entry.settings"
+          MYSQL_HOST: "127.0.0.1"
+          MYSQL_PORT: "3306"
+          MYSQL_USER: "root"
+          MYSQL_PASSWORD: app
           REDIS_HOST: "localhost"
           RABBITMQ_HOST: "localhost"
-

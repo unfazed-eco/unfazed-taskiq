@@ -1,11 +1,7 @@
-from unfazed_taskiq import agent
+from unfazed_taskiq.decorators import task
 
 
-@agent.broker.task
+# Use get_broker method instead of broker property
+@task
 async def add(a: int, b: int) -> int:
-    return a + b
-
-
-@agent.broker.task(schedule=[{"crontab": "*/1 * * * *", "args": [1, 2]}])
-async def add_schedule(a: int, b: int) -> int:
     return a + b

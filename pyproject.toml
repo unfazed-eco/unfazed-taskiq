@@ -5,9 +5,11 @@ description = "Taskiq Plugin for Unfazed"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiomysql>=0.2.0",
     "taskiq>=0.11.16",
     "taskiq-aio-pika>=0.4.2",
-    "unfazed>=0.0.8",
+    "unfazed>=0.0.16",
+    "unfazed-sentry>=0.0.2",
 ]
 
 
@@ -17,6 +19,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["unfazed_taskiq"]
+
+[project.scripts]
+taskiq = "taskiq.__main__:main"
+
+[project.entry-points."taskiq_cli"]
+unfazed-worker = "unfazed_taskiq.cli.worker:WorkerCMD"
+unfazed-scheduler = "unfazed_taskiq.cli.scheduler:SchedulerCMD"
 
 
 [dependency-groups]
@@ -31,10 +40,8 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "session"
-testpaths = [
-    "tests"
-]
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
 
 [tool.ruff.lint]
 ignore = [
