@@ -34,13 +34,9 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: app
           MYSQL_DATABASE: app
-          MYSQL_USER: root
+          MYSQL_USER: app
           MYSQL_PASSWORD: app
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -papp"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     name: "Python ${{ matrix.python-version }}"
     runs-on: "ubuntu-latest"
 
