@@ -1,6 +1,6 @@
 [project]
 name = "unfazed-taskiq"
-version = "0.0.3"
+version = "0.0.4"
 description = "Taskiq Plugin for Unfazed"
 readme = "README.md"
 requires-python = ">=3.12"
