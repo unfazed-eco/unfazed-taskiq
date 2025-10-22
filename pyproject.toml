@@ -8,7 +8,7 @@ dependencies = [
     "aiomysql>=0.2.0",
     "taskiq>=0.11.16",
     "taskiq-aio-pika>=0.4.2",
-    "unfazed>=0.0.15",
+    "unfazed>=0.0.16",
     "unfazed-sentry>=0.0.2",
 ]
 

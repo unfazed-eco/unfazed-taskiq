@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -874,7 +874,7 @@ wheels = [
 
 [[package]]
 name = "unfazed"
-version = "0.0.15"
+version = "0.0.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aerich" },
@@ -893,9 +893,9 @@ dependencies = [
     { name = "tortoise-orm" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/18/b3/e0a46528382541981371e74af0fdec3c974331291f74f0e11fd5e4ac9f84/unfazed-0.0.15.tar.gz", hash = "sha256:345366556f431c7b84c7a0d57c33b6a0b424a6822583905d974803469bbe09ab", size = 84639, upload-time = "2025-09-01T14:53:31.435Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/ea/f796d5ae3e31291300219d3100136f4b1b0fc25f085d4a7e46e92861cdef/unfazed-0.0.16.tar.gz", hash = "sha256:d073e5359dfdda68cd72c30163aaf695b8719673f02c90eedd72fca6062af97c", size = 85729, upload-time = "2025-10-22T09:13:32.046Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/10/3c097a1d038677e20eb5615def2516ed3ec59a366527d2ee473d1a4b39a9/unfazed-0.0.15-py3-none-any.whl", hash = "sha256:99d2139358d526c31c82cd796d221c52fbf46f8bc0de375d8b918bcb4cc4760a", size = 146627, upload-time = "2025-09-01T14:53:30.21Z" },
+    { url = "https://files.pythonhosted.org/packages/12/76/da901fb7f744d97c60deb5cb97763954244c84f44d0b1c5a27b900253eb2/unfazed-0.0.16-py3-none-any.whl", hash = "sha256:51c36860a5fb7717e46edabe281ddc07d3a2c1f9006bcf965688a3d02b790aea", size = 148179, upload-time = "2025-10-22T09:13:31.131Z" },
 ]
 
 [[package]]
@@ -938,7 +938,7 @@ requires-dist = [
     { name = "aiomysql", specifier = ">=0.2.0" },
     { name = "taskiq", specifier = ">=0.11.16" },
     { name = "taskiq-aio-pika", specifier = ">=0.4.2" },
-    { name = "unfazed", specifier = ">=0.0.15" },
+    { name = "unfazed", specifier = ">=0.0.16" },
     { name = "unfazed-sentry", specifier = ">=0.0.2" },
 ]
 
