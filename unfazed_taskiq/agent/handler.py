@@ -25,6 +25,9 @@ class AgentHandler(Storage[TaskiqAgent]):
         self._ready = False
 
     def setup(self) -> None:
+        if self._ready:
+            return
+
         if not os.environ.get("UNFAZED_SETTINGS_MODULE"):
             raise ValueError("UNFAZED_SETTINGS_MODULE is not set")
 
