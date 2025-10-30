@@ -173,6 +173,62 @@ class TestAgentHandler:
         assert handler.storage["alpha"] is fake_agent
         assert handler._ready is True
 
+    def test_setup_idempotent(
+        self, handler_module: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that setup() can be called multiple times without side effects."""
+        handler = self._make_handler(handler_module, monkeypatch)
+        monkeypatch.setenv("UNFAZED_SETTINGS_MODULE", "module.path")
+        config = {
+            "DEFAULT_TASKIQ_NAME": "alpha",
+            "TASKIQ_CONFIG": {
+                "alpha": {
+                    "BROKER": {
+                        "BACKEND": "taskiq.InMemoryBroker",
+                        "OPTIONS": {},
+                    }
+                }
+            },
+        }
+
+        import_setting_mock = MagicMock(
+            return_value={"UNFAZED_TASKIQ_SETTINGS": config}
+        )
+        monkeypatch.setattr(handler_module, "import_setting", import_setting_mock)
+
+        fake_agent = SimpleNamespace(
+            alias_name="alpha",
+            broker="broker-alpha",
+            scheduler="scheduler-alpha",
+            startup=AsyncMock(),
+            shutdown=AsyncMock(),
+        )
+
+        agent_setup_mock = MagicMock(return_value=fake_agent)
+        monkeypatch.setattr(handler_module.TaskiqAgent, "setup", agent_setup_mock)
+
+        # First setup call
+        handler.setup()
+        assert handler._ready is True
+        assert handler.default_alias_name == "alpha"
+        assert handler.storage["alpha"] is fake_agent
+
+        # Verify setup logic was called once
+        import_setting_mock.assert_called_once()
+        agent_setup_mock.assert_called_once()
+
+        # Second setup call - should return early
+        handler.setup()
+
+        # Verify setup logic was NOT called again
+        import_setting_mock.assert_called_once()
+        agent_setup_mock.assert_called_once()
+
+        # State should remain unchanged
+        assert handler._ready is True
+        assert handler.default_alias_name == "alpha"
+        assert len(handler.storage) == 1
+
     def test_check_ready_paths(
         self, handler_module: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
