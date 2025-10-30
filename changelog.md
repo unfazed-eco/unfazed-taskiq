@@ -1,3 +1,7 @@
+v0.0.5
+=====
+• Add early return guard in setup() method when already initialized
+
 v0.0.4
 =====
 
@@ -9,7 +13,6 @@ v0.0.4
 • Comprehensive test suite: Added extensive unit tests covering all new components with 95%+ coverage
 • Configuration updates: Restructured settings to support multi-broker configurations and added MySQL dependencies
 • Documentation overhaul: Complete rewrite with quick start guide, multi-broker examples, and scheduling instructions
-
 
 
 v0.0.2
