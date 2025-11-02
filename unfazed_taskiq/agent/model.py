@@ -65,9 +65,15 @@ class TaskiqAgent(BaseModel):
     async def startup(self) -> None:
         if self.scheduler and isinstance(self.scheduler, TaskiqScheduler):
             await self.scheduler.startup()
+            if self.scheduler.sources:
+                for source in self.scheduler.sources:
+                    await source.startup()
         await self.broker.startup()
 
     async def shutdown(self) -> None:
         if self.scheduler and isinstance(self.scheduler, TaskiqScheduler):
             await self.scheduler.shutdown()
+            if self.scheduler.sources:
+                for source in self.scheduler.sources:
+                    await source.shutdown()
         await self.broker.shutdown()

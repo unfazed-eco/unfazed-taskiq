@@ -913,7 +913,7 @@ wheels = [
 
 [[package]]
 name = "unfazed-taskiq"
-version = "0.0.3"
+version = "0.0.5"
 source = { editable = "." }
 dependencies = [
     { name = "aiomysql" },

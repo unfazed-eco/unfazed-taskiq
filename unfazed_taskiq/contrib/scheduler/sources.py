@@ -40,12 +40,15 @@ class TortoiseScheduleSource(ScheduleSource):
         if db_alias not in unfazed_settings.DATABASE.connections:
             raise RuntimeError(f"Database connection {db_alias} not found")
         self._alias: str = db_alias
+        self.alias: t.Optional[BaseDBAsyncClient] = None
         self.schedule_alias: str = schedule_alias
         self.startup_handlers: t.List[str] = startup_handlers
         self.shutdown_handlers: t.List[str] = shutdown_handlers
 
     async def startup(self) -> None:
         """Action to execute during startup."""
+        if self.alias is not None:
+            return
         for handler in self.startup_handlers:
             handler_cls = import_string(handler)
             await maybe_awaitable(handler_cls())
@@ -53,7 +56,7 @@ class TortoiseScheduleSource(ScheduleSource):
         if not Tortoise._inited:
             raise RuntimeError("Tortoise is not initialized")
 
-        self.alias: BaseDBAsyncClient = Tortoise.get_connection(self._alias)
+        self.alias = Tortoise.get_connection(self._alias)
 
         log.info("TortoiseScheduleSource startup")
 
@@ -108,6 +111,7 @@ class TortoiseScheduleSource(ScheduleSource):
             labels=json.dumps(schedule.labels).decode(),
             schedule_id=schedule_id,
             schedule_alias=self.schedule_alias,
+            time=datetime.now(),
         )
 
         if schedule.cron is not None:
