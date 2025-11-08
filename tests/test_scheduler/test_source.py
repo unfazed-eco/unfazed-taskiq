@@ -62,6 +62,37 @@ class TestTortoiseScheduleSource(object):
         assert source.alias is not None
         assert source.alias == Tortoise.get_connection("default")
 
+    async def test_tortoise_schedule_source_startup_idempotent(self) -> None:
+        """Test TortoiseScheduleSource startup is idempotent (can be called multiple times)."""
+        from unittest.mock import MagicMock, patch
+
+        source = TortoiseScheduleSource(
+            schedule_alias="test_task3",
+            startup_handlers=[
+                "tests.test_scheduler.test_source.test_startup_handler",
+            ],
+        )
+        
+        # First startup call
+        await source.startup()
+        assert source.alias is not None
+        first_alias = source.alias
+        
+        # Mock import_string to track if handlers are called again
+        with patch("unfazed_taskiq.contrib.scheduler.sources.import_string") as mock_import:
+            mock_handler = MagicMock()
+            mock_import.return_value = mock_handler
+            
+            # Second startup call - should return early without calling handlers
+            await source.startup()
+            
+            # Verify alias is still set and unchanged
+            assert source.alias is not None
+            assert source.alias is first_alias
+            
+            # Verify handlers were NOT called again (import_string not called)
+            mock_import.assert_not_called()
+
     async def test_tortoise_schedule_source_get_schedules(
         self, test_scheduler_sample_data: list[dict]
     ) -> None:

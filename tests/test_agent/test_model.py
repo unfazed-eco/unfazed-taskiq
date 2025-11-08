@@ -246,3 +246,45 @@ class TestTaskiqAgent:
 
         await agent.shutdown()
         agent.broker.shutdown_mock.assert_awaited_once()  # type: ignore
+
+    async def test_startup_and_shutdown_with_sources(self) -> None:
+        # Create config with scheduler and sources, but without handlers
+        config = TaskiqConfig(
+            BROKER=Broker(BACKEND="tests.doubles.FakeBroker"),
+            RESULT=None,
+            SCHEDULER=Scheduler(
+                BACKEND="tests.doubles.SchedulerBackend",
+                SOURCES=[
+                    "tests.doubles.SourceFactory",
+                    "tests.doubles.BoundSource",
+                ],
+            ),
+        )
+        agent = TaskiqAgent.setup("alias", config)
+
+        # Verify scheduler and sources are set up
+        assert agent.scheduler is not None
+        assert len(agent.scheduler.sources) == 2
+
+        # Add startup/shutdown mocks to sources
+        for source in agent.scheduler.sources:
+            source.startup = AsyncMock()  # type: ignore
+            source.shutdown = AsyncMock()  # type: ignore
+
+        await agent.startup()
+        # Verify scheduler startup was called
+        agent.scheduler.startup_mock.assert_awaited_once()  # type: ignore
+        # Verify all sources startup was called
+        for source in agent.scheduler.sources:
+            source.startup.assert_awaited_once()  # type: ignore
+        # Verify broker startup was called
+        agent.broker.startup_mock.assert_awaited_once()  # type: ignore
+
+        await agent.shutdown()
+        # Verify scheduler shutdown was called
+        agent.scheduler.shutdown_mock.assert_awaited_once()  # type: ignore
+        # Verify all sources shutdown was called
+        for source in agent.scheduler.sources:
+            source.shutdown.assert_awaited_once()  # type: ignore
+        # Verify broker shutdown was called
+        agent.broker.shutdown_mock.assert_awaited_once()  # type: ignore

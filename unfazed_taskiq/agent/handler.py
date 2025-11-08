@@ -59,8 +59,7 @@ class AgentHandler(Storage[TaskiqAgent]):
 
     def get_agent(self, alias_name: Optional[str]) -> Optional[TaskiqAgent]:
         """Get the agent by alias name"""
-        if not self._ready:
-            self.check_ready()
+        self.check_ready()
         _alias_name = self.default_alias_name if alias_name is None else alias_name
         return self.storage.get(_alias_name, None)
 
