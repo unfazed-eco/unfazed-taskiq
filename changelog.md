@@ -1,6 +1,7 @@
 v0.0.6
 =====
 - fix [issue #16](https://github.com/unfazed-eco/unfazed-taskiq/issues/16) Integrate the source lifespan into the unfazed-taskiq lifespan
+- Move unfazed-sentry to dev dependencies
 
 v0.0.5
 =====
