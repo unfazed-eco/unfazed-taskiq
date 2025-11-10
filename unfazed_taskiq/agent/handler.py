@@ -50,32 +50,27 @@ class AgentHandler(Storage[TaskiqAgent]):
         for alias_name, taskiq_config in taskiq_config_settings.taskiq_config.items():
             taskiq_agent: TaskiqAgent = TaskiqAgent.setup(alias_name, taskiq_config)
             self.register(alias_name, taskiq_agent)
-        self._ready = True
+        if self.storage:
+            self._ready = True
 
     def check_ready(self) -> None:
         if not self._ready:
-            self.reset()
             self.setup()
 
     def get_agent(self, alias_name: Optional[str]) -> Optional[TaskiqAgent]:
         """Get the agent by alias name"""
-        if not self._ready:
-            self.check_ready()
+        self.check_ready()
         _alias_name = self.default_alias_name if alias_name is None else alias_name
         return self.storage.get(_alias_name, None)
 
     @property
     def scheduler(self) -> TaskiqScheduler:
         """Get the default scheduler"""
-        if not self._ready:
-            self.check_ready()
         return self.storage[self.default_alias_name].scheduler
 
     @property
     def broker(self) -> AsyncBroker:
         """Get the default broker"""
-        if not self._ready:
-            self.check_ready()
         return self.storage[self.default_alias_name].broker
 
     async def startup(self) -> None:

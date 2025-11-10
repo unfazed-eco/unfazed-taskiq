@@ -40,7 +40,7 @@ async def unfazed() -> t.AsyncGenerator[Unfazed, None]:
     root_path = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(root_path)
     os.environ.setdefault("UNFAZED_SETTINGS_MODULE", "tests.proj.entry.settings")
-    unfazed = Unfazed()
+    unfazed = Unfazed(silent=True)
     await unfazed.setup()
 
     conn = connections.get("default")
