@@ -1,3 +1,7 @@
+v0.0.7
+=====
+- fix [issue #20](https://github.com/unfazed-eco/unfazed-taskiq/issues/20) Task Trigger Logic
+
 v0.0.6
 =====
 - fix [issue #16](https://github.com/unfazed-eco/unfazed-taskiq/issues/16) Integrate the source lifespan into the unfazed-taskiq lifespan

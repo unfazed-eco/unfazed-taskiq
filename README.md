@@ -11,8 +11,30 @@ pip install unfazed-taskiq
 ## Quick Start
 
 This guide will help you get started with Unfazed Taskiq in just a few minutes.
-
-### 1. Configure Settings
+### 1. Create new db table
+``` SQL
+CREATE TABLE `unfazed_taskiq_periodic_task` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `description` text NOT NULL,
+  `schedule_alias` varchar(255) NOT NULL,
+  `task_name` varchar(255) NOT NULL,
+  `task_args` text NOT NULL,
+  `task_kwargs` text NOT NULL,
+  `labels` text NOT NULL,
+  `cron` varchar(255) DEFAULT NULL,
+  `time` datetime(6) DEFAULT NULL,
+  `last_run_at` datetime NOT NULL,
+  `total_run_count` int(11) NOT NULL,
+  `enabled` tinyint(1) NOT NULL,
+  `schedule_id` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_schedule_id` (`schedule_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;
+```
+### 2. Configure Settings
 
 Add Taskiq configuration to your Unfazed settings file:
 
@@ -42,7 +64,7 @@ UNFAZED_SETTINGS = {
 }
 ```
 
-### 2. Create Tasks
+### 3. Create Tasks
 
 Define your tasks in your app's `tasks.py` file:
 
@@ -56,7 +78,7 @@ async def add_numbers(a: int, b: int) -> int:
     return a + b
 ```
 
-### 3. Start Worker
+### 4. Start Worker
 
 ```shell
 # auto discover all async task
@@ -66,7 +88,7 @@ uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd
 uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp backend/spider/tasks.py
 ```
 
-### 4. Execute Tasks
+### 5. Execute Tasks
 
 ```python
 from xxx.task import add_numbers

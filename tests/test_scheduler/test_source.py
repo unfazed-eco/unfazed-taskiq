@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timedelta
 from typing import Optional
 
 from taskiq import ScheduledTask
@@ -217,6 +218,7 @@ class TestTortoiseScheduleSource(object):
             schedule_id=s_task.schedule_id
         ).first()
         assert origin_db_data is not None
+        assert origin_db_data.enabled == 1
 
         await source.post_send(s_task)
         assert source.alias is not None
@@ -227,6 +229,42 @@ class TestTortoiseScheduleSource(object):
         ).first()
         assert db_data is not None
         assert origin_db_data.total_run_count + 1 == db_data.total_run_count
+        assert db_data.enabled == 1
+
+    async def test_tortoise_schedule_source_post_send_time_task_disables(
+        self,
+    ) -> None:
+        """Ensure post_send disables one-off time-based schedules after execution."""
+        source = TortoiseScheduleSource(schedule_alias="time_schedule")
+        await source.startup()
+
+        schedule_id = str(uuid.uuid4().hex)
+        task_time = datetime.now() + timedelta(minutes=5)
+        time_task = ScheduledTask(
+            task_name="test.tasks:test_time_task",
+            args=[],
+            kwargs={},
+            labels={},
+            schedule_id=schedule_id,
+            time=task_time,
+        )
+
+        await source.add_schedule(time_task)
+
+        origin_db_data: Optional[PeriodicTask] = await PeriodicTask.filter(
+            schedule_id=schedule_id
+        ).first()
+        assert origin_db_data is not None
+        assert origin_db_data.enabled == 1
+
+        await source.post_send(time_task)
+
+        db_data: Optional[PeriodicTask] = await PeriodicTask.filter(
+            schedule_id=schedule_id
+        ).first()
+        assert db_data is not None
+        assert db_data.total_run_count == origin_db_data.total_run_count + 1
+        assert db_data.enabled == 0
 
 
 class TestTortoiseScheduleSourceErrors(object):
