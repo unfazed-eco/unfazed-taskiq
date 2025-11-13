@@ -60,7 +60,7 @@ class PeriodicTask(BaseModel):
     )
 
     time = fields.DatetimeField(
-        description="The time to be used to schedule the task.",
+        description="The task time expression to be used to schedule the task only once at a specific time",
         default=None,
         null=True,
     )
