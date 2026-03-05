@@ -7,7 +7,11 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 UNFAZED_SETTINGS = {
     "LIFESPAN": [],
     "ROOT_URLCONF": "tests.proj.entry.routes",
-    "INSTALLED_APPS": ["tests.proj.app1", "unfazed_taskiq.contrib.scheduler"],
+    "INSTALLED_APPS": [
+        "tests.proj.app1",
+        "unfazed_taskiq.contrib.scheduler",
+        "unfazed_taskiq.contrib.result_backend",
+    ],
     "DATABASE": {
         "CONNECTIONS": {
             "default": {
@@ -58,6 +62,13 @@ UNFAZED_TASKIQ_SETTINGS = {
         default_taskiq_name: {
             "BROKER": {
                 "BACKEND": "taskiq.InMemoryBroker",
+                "OPTIONS": {},
+                "MIDDLEWARES": [
+                    "unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware",
+                ],
+            },
+            "RESULT": {
+                "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
                 "OPTIONS": {},
             },
             "SCHEDULER": {

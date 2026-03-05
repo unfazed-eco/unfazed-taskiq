@@ -215,6 +215,35 @@ Start the Taskiq worker to process tasks:
 uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 ```
 
+## Result Backend
+
+Result Backend saves task results so you can fetch them later. It supports **MySQL/TiDB** via `MySQLResultBackend`.
+
+### How to enable
+
+Add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`, and set `RESULT` plus `TaskiqResultPreSendMiddleware` in `TASKIQ_CONFIG`:
+
+```python
+# Add to INSTALLED_APPS
+"unfazed_taskiq.contrib.result_backend",
+
+# In TASKIQ_CONFIG
+"BROKER": {
+    "MIDDLEWARES": ["unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware"],
+},
+"RESULT": {
+    "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
+    "OPTIONS": {},
+},
+```
+
+### How to get the result
+
+```python
+task = await add_numbers.kiq(10, 20)
+value = await task.wait_result()  # waits until done, then returns the value
+```
+
 ## 📖 更多文档
 
 pls read [taskiq document](https://taskiq-python.github.io/guide/)

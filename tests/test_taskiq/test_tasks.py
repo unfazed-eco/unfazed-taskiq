@@ -1,12 +1,145 @@
+"""
+Task tests covering: regular, scheduled, args/kwargs, schedule_id, failing tasks.
+
+Reference: https://taskiq-python.github.io/guide/testing-taskiq.html
+"""
+
 import pytest
 from unfazed.core import Unfazed
 from unfazed.test import Requestfactory
 
+from tests.proj.app1.tasks import (
+    add,
+    concat,
+    failing_task,
+    merge,
+    mixed_args,
+    multiply,
+    scheduled_echo,
+)
+from unfazed_taskiq.agent.handler import agents
+from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
+
 
 @pytest.mark.asyncio
 async def test_api(unfazed: Unfazed) -> None:
+    """Test API endpoint that invokes add task."""
     async with Requestfactory(unfazed) as rf:
         resp = await rf.get("/app1/add?a=1&b=2")
 
         assert resp.status_code == 200
         assert resp.json() == {"result": 3}
+
+
+@pytest.mark.asyncio
+async def test_regular_task_positional_args(unfazed: Unfazed) -> None:
+    """Regular task with positional arguments."""
+    task = await add.kiq(3, 5)
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == 8
+
+
+@pytest.mark.asyncio
+async def test_regular_task_named_params(unfazed: Unfazed) -> None:
+    """Task with named parameters."""
+    task = await multiply.kiq(a=4, b=7)
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == 28
+
+
+@pytest.mark.asyncio
+async def test_task_variable_positional_args(unfazed: Unfazed) -> None:
+    """Task with *args."""
+    task = await concat.kiq("a", "b", "c")
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == "abc"
+
+
+@pytest.mark.asyncio
+async def test_task_variable_keyword_args(unfazed: Unfazed) -> None:
+    """Task with **kwargs."""
+    task = await merge.kiq(x="1", y="2", z="3")
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == {"x": "1", "y": "2", "z": "3"}
+
+
+@pytest.mark.asyncio
+async def test_task_mixed_args(unfazed: Unfazed) -> None:
+    """Task with positional, *args, and keyword param."""
+    task = await mixed_args.kiq(1, 2, 3, 4, prefix="sum=")
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == "sum=10"
+
+
+@pytest.mark.asyncio
+async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
+    """Task with schedule_id in labels (simulates scheduled task)."""
+    schedule_id = "sched-test-001"
+    task = await scheduled_echo.kicker().with_labels(schedule_id=schedule_id).kiq(
+        "hello"
+    )
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == "echo:hello"
+
+    # Verify schedule_id persisted in result backend
+    row = await TaskiqResultModel.filter(task_id=task.task_id).first()
+    assert row is not None
+    assert row.schedule_id == schedule_id
+    assert row.status == TaskStatus.SUCCESS
+
+
+@pytest.mark.asyncio
+async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sample_data: list) -> None:
+    """Scheduled task triggered by scheduler (PeriodicTask with schedule_id)."""
+    from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
+
+    # Get an enabled schedule
+    enabled = await PeriodicTask.filter(enabled=1).first()
+    assert enabled is not None
+
+    # Manually kick with same schedule_id as scheduler would
+    task = await scheduled_echo.kicker().with_labels(
+        schedule_id=enabled.schedule_id
+    ).kiq("scheduled")
+    result = await task.wait_result(timeout=10)
+
+    assert result.is_err is False
+    assert result.return_value == "echo:scheduled"
+
+    row = await TaskiqResultModel.filter(task_id=task.task_id).first()
+    assert row is not None
+    assert row.schedule_id == enabled.schedule_id
+
+
+@pytest.mark.asyncio
+async def test_failing_task(unfazed: Unfazed) -> None:
+    """Task that raises exception - check return_value, traceback, DB."""
+    task = await failing_task.kiq("intentional failure")
+    result = await task.wait_result(timeout=10, with_logs=True)
+
+    assert result.is_err is True
+    assert result.return_value is None
+    assert result.log is not None
+    assert "ValueError" in result.log
+    assert "intentional failure" in result.log
+    assert "Traceback" in result.log
+
+    # Verify traceback persisted in result backend
+    row = await TaskiqResultModel.filter(task_id=task.task_id).first()
+    assert row is not None
+    assert row.status == TaskStatus.FAILURE
+    assert row.traceback is not None
+    assert "ValueError" in row.traceback
+    assert "intentional failure" in row.traceback
