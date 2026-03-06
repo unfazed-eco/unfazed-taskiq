@@ -35,6 +35,9 @@ class TaskiqResultPreSendMiddleware(TaskiqMiddleware):
                 task_kwargs=task_kwargs,
                 schedule_id=schedule_id,
                 status=int(TaskStatus.STARTED),
+                result=None,
+                date_done=None,
+                traceback=None,
             )
         else:
             await TaskiqResultModel.create(

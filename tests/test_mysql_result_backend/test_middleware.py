@@ -67,6 +67,35 @@ class TestTaskiqResultPreSendMiddleware:
         count = await TaskiqResultModel.filter(task_id="msg-002").count()
         assert count == 1
 
+    async def test_pre_send_clears_completion_fields_on_reuse(
+        self, middleware: TaskiqResultPreSendMiddleware
+    ) -> None:
+        """Test pre_send clears result/date_done/traceback when reusing task_id."""
+        await TaskiqResultModel.create(
+            task_id="msg-reuse",
+            status=int(TaskStatus.SUCCESS),
+            task_name="old.task",
+            date_created=1000,
+            date_done=2000,
+            result=b"old-result",
+            traceback="old traceback",
+        )
+        message = TaskiqMessage(
+            task_id="msg-reuse",
+            task_name="new.task",
+            args=[],
+            kwargs={},
+            labels={},
+        )
+        await middleware.pre_send(message)
+
+        row = await TaskiqResultModel.filter(task_id="msg-reuse").first()
+        assert row is not None
+        assert row.status == TaskStatus.STARTED
+        assert row.result is None
+        assert row.date_done is None
+        assert row.traceback is None
+
     async def test_pre_send_schedule_id_from_labels(
         self, middleware: TaskiqResultPreSendMiddleware
     ) -> None:

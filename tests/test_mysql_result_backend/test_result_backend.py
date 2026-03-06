@@ -229,3 +229,22 @@ class TestMySQLResultBackend:
         await backend.set_result(task_id, result)
         retrieved = await backend.get_result(task_id)
         assert retrieved.labels.get("schedule_id") == "sched-xyz789"
+
+    async def test_inconsistent_row_is_result_ready_false_get_result_raises(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        """Test that inconsistent row (STARTED + stale result) yields consistent behavior."""
+        task_id = "test-inconsistent"
+        await TaskiqResultModel.create(
+            task_id=task_id,
+            status=int(TaskStatus.STARTED),
+            task_name="test.task",
+            result=PickleSerializer().dumpb(
+                TaskiqResult(is_err=False, return_value=999, execution_time=0, log=None)
+            ),
+            date_done=12345,
+            traceback="old error",
+        )
+        assert await backend.is_result_ready(task_id) is False
+        with pytest.raises(ResultNotReadyError, match="has not completed yet"):
+            await backend.get_result(task_id)

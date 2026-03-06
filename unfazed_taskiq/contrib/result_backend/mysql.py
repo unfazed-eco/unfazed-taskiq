@@ -54,12 +54,16 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
                 traceback=traceback_val,
             )
 
+    def _is_row_ready(self, row: TaskiqResultModel) -> bool:
+        """Check if row represents a completed task (unified criteria for ready)."""
+        return row.status in (TaskStatus.SUCCESS, TaskStatus.FAILURE)
+
     async def is_result_ready(self, task_id: str) -> bool:
         """Check if result exists for task_id and task has completed (SUCCESS or FAILURE)."""
         row = await TaskiqResultModel.filter(task_id=task_id).first()
         if row is None:
             return False
-        return row.status in (TaskStatus.SUCCESS, TaskStatus.FAILURE)
+        return self._is_row_ready(row)
 
     async def get_result(
         self,
@@ -75,7 +79,7 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
         row = await TaskiqResultModel.filter(task_id=task_id).first()
         if row is None:
             raise ResultIsMissingError(f"Task {task_id} not found in database")
-        if row.result is None:
+        if not self._is_row_ready(row):
             raise ResultNotReadyError(
                 f"Task {task_id} has not completed yet; result is not ready"
             )
