@@ -35,13 +35,11 @@ class TaskiqResultAdmin(ModelAdmin):
         "schedule_id",
         "task_args",
         "task_kwargs",
-        "result",
         "traceback",
     ]
     readonly_fields: list[str] = [
         "task_id",
         "status",
-        "result",
         "date_done",
         "date_created",
         "task_name",
