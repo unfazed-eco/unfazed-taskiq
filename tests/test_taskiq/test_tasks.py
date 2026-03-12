@@ -21,7 +21,6 @@ from unfazed_taskiq.agent.handler import agents
 from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
 
 
-@pytest.mark.asyncio
 async def test_api(unfazed: Unfazed) -> None:
     """Test API endpoint that invokes add task."""
     async with Requestfactory(unfazed) as rf:
@@ -31,7 +30,6 @@ async def test_api(unfazed: Unfazed) -> None:
         assert resp.json() == {"result": 3}
 
 
-@pytest.mark.asyncio
 async def test_regular_task_positional_args(unfazed: Unfazed) -> None:
     """Regular task with positional arguments."""
     task = await add.kiq(3, 5)
@@ -41,7 +39,6 @@ async def test_regular_task_positional_args(unfazed: Unfazed) -> None:
     assert result.return_value == 8
 
 
-@pytest.mark.asyncio
 async def test_regular_task_named_params(unfazed: Unfazed) -> None:
     """Task with named parameters."""
     task = await multiply.kiq(a=4, b=7)
@@ -51,7 +48,6 @@ async def test_regular_task_named_params(unfazed: Unfazed) -> None:
     assert result.return_value == 28
 
 
-@pytest.mark.asyncio
 async def test_task_variable_positional_args(unfazed: Unfazed) -> None:
     """Task with *args."""
     task = await concat.kiq("a", "b", "c")
@@ -61,7 +57,6 @@ async def test_task_variable_positional_args(unfazed: Unfazed) -> None:
     assert result.return_value == "abc"
 
 
-@pytest.mark.asyncio
 async def test_task_variable_keyword_args(unfazed: Unfazed) -> None:
     """Task with **kwargs."""
     task = await merge.kiq(x="1", y="2", z="3")
@@ -71,7 +66,6 @@ async def test_task_variable_keyword_args(unfazed: Unfazed) -> None:
     assert result.return_value == {"x": "1", "y": "2", "z": "3"}
 
 
-@pytest.mark.asyncio
 async def test_task_mixed_args(unfazed: Unfazed) -> None:
     """Task with positional, *args, and keyword param."""
     task = await mixed_args.kiq(1, 2, 3, 4, prefix="sum=")
@@ -81,7 +75,6 @@ async def test_task_mixed_args(unfazed: Unfazed) -> None:
     assert result.return_value == "sum=10"
 
 
-@pytest.mark.asyncio
 async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
     """Task with schedule_id in labels (simulates scheduled task)."""
     schedule_id = "sched-test-001"
@@ -100,7 +93,6 @@ async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
     assert row.status == TaskStatus.SUCCESS
 
 
-@pytest.mark.asyncio
 async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sample_data: list) -> None:
     """Scheduled task triggered by scheduler (PeriodicTask with schedule_id)."""
     from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
@@ -123,7 +115,6 @@ async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sam
     assert row.schedule_id == enabled.schedule_id
 
 
-@pytest.mark.asyncio
 async def test_failing_task(unfazed: Unfazed) -> None:
     """Task that raises exception - check return_value, traceback, DB."""
     task = await failing_task.kiq("intentional failure")
