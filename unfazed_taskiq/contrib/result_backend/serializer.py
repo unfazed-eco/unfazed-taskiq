@@ -1,0 +1,8 @@
+from unfazed.serializer import Serializer
+
+from . import models as m
+
+
+class TaskiqResultSerializer(Serializer):
+    class Meta:
+        model = m.TaskiqResultModel
