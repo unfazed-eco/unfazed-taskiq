@@ -7,6 +7,8 @@ from . import serializer as s
 class TaskiqResultAdmin(ModelAdmin):
     route_label: str = "TaskIQ"
     component: str = "ModelAdmin"
+    
+    datetime_fields: list[str] = ["date_done", "date_created"]
 
     list_display: list[str] = [
         "task_id",

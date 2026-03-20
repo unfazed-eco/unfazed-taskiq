@@ -25,6 +25,7 @@ class TaskiqResultModel(models.Model):
     class Meta:
         table = "taskiq_result"
         indexes = [
+            indexes.Index(fields=["id"], name="idx_id"),
             indexes.Index(fields=["date_done"], name="idx_date_done"),
             indexes.Index(
                 fields=["task_name", "date_done"], name="idx_task_name_date_done"
@@ -36,11 +37,14 @@ class TaskiqResultModel(models.Model):
                 fields=["status"], name="idx_status",
             ),
         ]
+        
+    id = fields.IntField(primary_key=True)
 
     task_id = fields.CharField(
-        max_length=255, primary_key=True, description="Task unique identifier"
+        max_length=255, unique=True, description="Task unique identifier"
     )
-    status = fields.SmallIntField(
+    status = fields.IntEnumField(
+        TaskStatus,
         description="TaskStatus: 1=STARTED, 2=SUCCESS, 3=FAILURE",
     )
     result = fields.BinaryField(

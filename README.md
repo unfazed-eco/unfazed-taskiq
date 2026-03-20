@@ -215,11 +215,11 @@ Start the Taskiq worker to process tasks:
 uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 ```
 
-## Result Backend
+## How to use Result Backend
 
 Result Backend saves task results so you can fetch them later. It supports **MySQL/TiDB** via `MySQLResultBackend`.
 
-### How to enable
+### 1. How to enable
 
 Add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`, and set `RESULT` plus `TaskiqResultPreSendMiddleware` in `TASKIQ_CONFIG`:
 
@@ -236,8 +236,39 @@ Add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`, and set `RESULT
     "OPTIONS": {},
 },
 ```
+### 2. Create table
 
-### How to get the result
+``` SQL
+CREATE TABLE `taskiq_result` (
+    `id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    `task_id` VARCHAR(255) NOT NULL UNIQUE
+        COMMENT 'Task unique identifier',
+    `status` SMALLINT NOT NULL
+        COMMENT 'TaskStatus: 1=STARTED, 2=SUCCESS, 3=FAILURE',
+    `result` BLOB NULL
+        COMMENT 'Serialized TaskiqResult from serializer.dumpb',
+    `date_done` BIGINT NULL
+        COMMENT 'Timestamp when task completed',
+    `date_created` BIGINT NULL
+        COMMENT 'Timestamp when task was enqueued',
+    `task_name` VARCHAR(255) NULL
+        COMMENT 'Task definition name',
+    `schedule_id` VARCHAR(255) NULL
+        COMMENT 'Schedule id for periodic tasks (from labels)',
+    `task_args` JSON NULL
+        COMMENT 'Task positional arguments',
+    `task_kwargs` JSON NULL
+        COMMENT 'Task keyword arguments',
+    `traceback` TEXT NULL
+        COMMENT 'Traceback when task failed',
+    INDEX `idx_date_done` (`date_done`),
+    INDEX `idx_task_name_date_done` (`task_name`, `date_done`),
+    INDEX `idx_schedule_id_date_done` (`schedule_id`, `date_done`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### 3. How to get the result
 
 ```python
 task = await add_numbers.kiq(10, 20)
