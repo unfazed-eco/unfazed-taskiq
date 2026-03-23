@@ -10,6 +10,7 @@ from unfazed_taskiq.contrib.result_backend.exceptions import (
     ResultNotReadyError,
 )
 from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result_backend.utils import encode_for_json_field
 
 _ReturnType = TypeVar("_ReturnType")
 
@@ -36,6 +37,7 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
         status = TaskStatus.SUCCESS if not result.is_err else TaskStatus.FAILURE
         date_done = int(time.time() * 1000)
         traceback_val = result.log if result.is_err else None
+        return_value_db = encode_for_json_field(result.return_value)
 
         existing = await TaskiqResultModel.filter(task_id=task_id).first()
         if existing:
@@ -44,6 +46,7 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
                 status=int(status),
                 date_done=date_done,
                 traceback=traceback_val,
+                return_value=return_value_db,
             )
         else:
             await TaskiqResultModel.create(
@@ -52,6 +55,7 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
                 status=int(status),
                 date_done=date_done,
                 traceback=traceback_val,
+                return_value=return_value_db,
             )
 
     def _is_row_ready(self, row: TaskiqResultModel) -> bool:

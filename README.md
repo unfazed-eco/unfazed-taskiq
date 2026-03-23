@@ -219,6 +219,17 @@ uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 
 Result Backend saves task results so you can fetch them later. It supports **MySQL/TiDB** via `MySQLResultBackend`.
 
+Task metadata and return snapshots are stored in Tortoise **JSON** columns using `unfazed_taskiq.contrib.result_backend.utils.encode_for_json_field`:
+
+- If the value is **JSON-serializable** (lists, dicts, numbers, booleans, `null`), it is stored as-is. A bare Python **`str`** at the **top level** of `return_value` is stored as `{"__taskiq_json_str_fallback__": "<s>"}` because Tortoise `JSONField` treats `str` as JSON *text* to parse.
+- If serialization fails, the whole value is stored as `{"__taskiq_json_str_fallback__": str(value)}` so enqueue / `set_result` is not blocked.
+
+`TaskiqResultPreSendMiddleware` writes `task_args` / `task_kwargs` this way before send. `MySQLResultBackend.set_result` writes **`return_value`** the same way (the authoritative `TaskiqResult` remains in the `result` blob).
+
+`TaskiqResultSerializer` (e.g. Unfazed Admin) serializes `task_args`, `task_kwargs`, and `return_value` in **`model_dump()`** as **JSON strings** (`json.dumps`, `ensure_ascii=False`) for display.
+
+`TaskiqResultModel` uses `Meta.ordering = ["-date_created", "-date_done"]` so list queries default to newest-first when ORM ordering applies.
+
 ### 1. How to enable
 
 Add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`, and set `RESULT` plus `TaskiqResultPreSendMiddleware` in `TASKIQ_CONFIG`:
@@ -247,6 +258,8 @@ CREATE TABLE `taskiq_result` (
         COMMENT 'TaskStatus: 1=STARTED, 2=SUCCESS, 3=FAILURE',
     `result` BLOB NULL
         COMMENT 'Serialized TaskiqResult from serializer.dumpb',
+    `return_value` JSON NULL
+        COMMENT 'Snapshot via encode_for_json_field; full value in result blob',
     `date_done` BIGINT NULL
         COMMENT 'Timestamp when task completed',
     `date_created` BIGINT NULL
@@ -256,9 +269,9 @@ CREATE TABLE `taskiq_result` (
     `schedule_id` VARCHAR(255) NULL
         COMMENT 'Schedule id for periodic tasks (from labels)',
     `task_args` JSON NULL
-        COMMENT 'Task positional arguments',
+        COMMENT 'JSON array or __taskiq_json_str_fallback__ str(list)',
     `task_kwargs` JSON NULL
-        COMMENT 'Task keyword arguments',
+        COMMENT 'JSON object or __taskiq_json_str_fallback__ str(dict)',
     `traceback` TEXT NULL
         COMMENT 'Traceback when task failed',
     INDEX `idx_date_done` (`date_done`),

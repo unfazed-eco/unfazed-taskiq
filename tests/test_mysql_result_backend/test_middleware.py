@@ -4,6 +4,7 @@ from taskiq.result import TaskiqResult
 
 from unfazed_taskiq.contrib.result_backend.middleware import TaskiqResultPreSendMiddleware
 from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result_backend.utils import TASKIQ_JSON_STR_FALLBACK_KEY
 
 
 @pytest.fixture
@@ -70,7 +71,7 @@ class TestTaskiqResultPreSendMiddleware:
     async def test_pre_send_clears_completion_fields_on_reuse(
         self, middleware: TaskiqResultPreSendMiddleware
     ) -> None:
-        """Test pre_send clears result/date_done/traceback when reusing task_id."""
+        """Test pre_send clears result/return_value/date_done/traceback when reusing task_id."""
         await TaskiqResultModel.create(
             task_id="msg-reuse",
             status=int(TaskStatus.SUCCESS),
@@ -78,6 +79,7 @@ class TestTaskiqResultPreSendMiddleware:
             date_created=1000,
             date_done=2000,
             result=b"old-result",
+            return_value={"done": True},
             traceback="old traceback",
         )
         message = TaskiqMessage(
@@ -93,6 +95,7 @@ class TestTaskiqResultPreSendMiddleware:
         assert row is not None
         assert row.status == TaskStatus.STARTED
         assert row.result is None
+        assert row.return_value is None
         assert row.date_done is None
         assert row.traceback is None
 
@@ -157,3 +160,45 @@ class TestTaskiqResultPreSendMiddleware:
         assert "ValueError" in result.log
         assert "Task failed intentionally" in result.log
         assert "Traceback" in result.log
+
+    async def test_pre_send_task_args_fallback_when_not_json_serializable(
+        self, middleware: TaskiqResultPreSendMiddleware
+    ) -> None:
+        class _NotJson:
+            pass
+
+        message = TaskiqMessage(
+            task_id="msg-bad-args",
+            task_name="app.task",
+            args=[_NotJson()],
+            kwargs={"ok": 1},
+            labels={},
+        )
+        await middleware.pre_send(message)
+        row = await TaskiqResultModel.filter(task_id="msg-bad-args").first()
+        assert row is not None
+        assert isinstance(row.task_args, dict)
+        assert TASKIQ_JSON_STR_FALLBACK_KEY in row.task_args
+        assert "_NotJson" in row.task_args[TASKIQ_JSON_STR_FALLBACK_KEY]
+        assert row.task_kwargs == {"ok": 1}
+
+    async def test_pre_send_task_kwargs_fallback_when_not_json_serializable(
+        self, middleware: TaskiqResultPreSendMiddleware
+    ) -> None:
+        class _NotJson:
+            pass
+
+        message = TaskiqMessage(
+            task_id="msg-bad-kwargs",
+            task_name="app.task",
+            args=[1],
+            kwargs={"x": _NotJson()},
+            labels={},
+        )
+        await middleware.pre_send(message)
+        row = await TaskiqResultModel.filter(task_id="msg-bad-kwargs").first()
+        assert row is not None
+        assert row.task_args == [1]
+        assert isinstance(row.task_kwargs, dict)
+        assert TASKIQ_JSON_STR_FALLBACK_KEY in row.task_kwargs
+        assert "_NotJson" in row.task_kwargs[TASKIQ_JSON_STR_FALLBACK_KEY]

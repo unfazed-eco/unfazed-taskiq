@@ -37,6 +37,7 @@ class TaskiqResultModel(models.Model):
                 fields=["status"], name="idx_status",
             ),
         ]
+        ordering = ["-date_created", "-date_done"]
         
     id = fields.IntField(primary_key=True)
 
@@ -50,6 +51,11 @@ class TaskiqResultModel(models.Model):
     result = fields.BinaryField(
         null=True,
         description="Serialized TaskiqResult from serializer.dumpb",
+    )
+    return_value = fields.JSONField(
+        null=True,
+        description="JSON-serializable return_value; "
+        "full value may exist only in result blob",
     )
     date_done = fields.BigIntField(
         null=True,
@@ -71,11 +77,13 @@ class TaskiqResultModel(models.Model):
     )
     task_args = fields.JSONField(
         null=True,
-        description="Task positional arguments",
+        description="Task positional arguments: JSON array if serializable, else "
+        "{__taskiq_json_str_fallback__: str(list)}",
     )
     task_kwargs = fields.JSONField(
         null=True,
-        description="Task keyword arguments",
+        description="Task keyword arguments: JSON object if serializable, else "
+        "{__taskiq_json_str_fallback__: str(dict)}",
     )
     traceback = fields.TextField(
         null=True,

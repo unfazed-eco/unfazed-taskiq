@@ -8,6 +8,17 @@ from unfazed_taskiq.contrib.result_backend.exceptions import (
 )
 from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
 from unfazed_taskiq.contrib.result_backend.mysql import MySQLResultBackend
+from unfazed_taskiq.contrib.result_backend.utils import (
+    TASKIQ_JSON_STR_FALLBACK_KEY,
+    encode_for_json_field,
+)
+
+
+class _OpaqueReturnValue:
+    """Pickle-serializable, not JSON-serializable; for return_value column fallback tests."""
+
+    def __str__(self) -> str:
+        return "opaque-rv"
 
 
 @pytest.fixture
@@ -41,6 +52,8 @@ class TestMySQLResultBackend:
         retrieved = await backend.get_result(task_id)
         assert retrieved.return_value == 42
         assert retrieved.is_err is False
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.return_value == encode_for_json_field(42)
 
     async def test_set_result_and_get_result_with_logs(
         self, backend: MySQLResultBackend
@@ -148,6 +161,8 @@ class TestMySQLResultBackend:
         retrieved = await backend.get_result(task_id, with_logs=True)
         assert retrieved.is_err is True
         assert retrieved.log == "Traceback: error occurred"
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.return_value is None
 
     async def test_init_with_custom_serializer(
         self, backend_with_custom_serializer: MySQLResultBackend
@@ -163,6 +178,44 @@ class TestMySQLResultBackend:
         await backend_with_custom_serializer.set_result(task_id, result)
         retrieved = await backend_with_custom_serializer.get_result(task_id)
         assert retrieved.return_value == "serialized"
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.return_value == {
+            TASKIQ_JSON_STR_FALLBACK_KEY: "serialized",
+        }
+
+    async def test_set_result_string_return_value_uses_json_field_fallback_shape(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        """Bare str is wrapped for Tortoise JSONField; blob still holds real value."""
+        task_id = "test-rv-str-col"
+        result = TaskiqResult(
+            is_err=False,
+            return_value="hello",
+            execution_time=0,
+            log=None,
+        )
+        await backend.set_result(task_id, result)
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.return_value == {TASKIQ_JSON_STR_FALLBACK_KEY: "hello"}
+        assert (await backend.get_result(task_id)).return_value == "hello"
+
+    async def test_set_result_non_serializable_return_value_fallback(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        task_id = "test-rv-opaque"
+        result = TaskiqResult(
+            is_err=False,
+            return_value=_OpaqueReturnValue(),
+            execution_time=0,
+            log=None,
+        )
+        await backend.set_result(task_id, result)
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert isinstance(row.return_value, dict)
+        assert TASKIQ_JSON_STR_FALLBACK_KEY in row.return_value
+        assert "opaque-rv" in row.return_value[TASKIQ_JSON_STR_FALLBACK_KEY]
+        loaded = await backend.get_result(task_id)
+        assert isinstance(loaded.return_value, _OpaqueReturnValue)
 
     async def test_is_result_ready_false_when_started(
         self, backend: MySQLResultBackend
