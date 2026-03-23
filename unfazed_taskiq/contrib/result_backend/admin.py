@@ -8,14 +8,14 @@ class TaskiqResultAdmin(ModelAdmin):
     route_label: str = "TaskIQ"
     component: str = "ModelAdmin"
     
-    datetime_fields: list[str] = ["date_done", "date_created"]
+    datetime_fields: list[str] = ["date_created", "date_done"]
 
     list_display: list[str] = [
         "task_id",
         "task_name",
         "status",
-        "date_done",
         "date_created",
+        "date_done",
         "schedule_id",
     ]
     search_fields: list[str] = [
@@ -32,8 +32,8 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_id",
         "task_name",
         "status",
-        "date_done",
         "date_created",
+        "date_done",
         "schedule_id",
         "task_args",
         "task_kwargs",
@@ -42,8 +42,8 @@ class TaskiqResultAdmin(ModelAdmin):
     readonly_fields: list[str] = [
         "task_id",
         "status",
-        "date_done",
         "date_created",
+        "date_done",
         "task_name",
         "schedule_id",
         "task_args",
