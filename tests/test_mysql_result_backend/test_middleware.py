@@ -1,6 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 from taskiq.message import TaskiqMessage
 from taskiq.result import TaskiqResult
+from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
+from tortoise.queryset import UpdateQuery
 
 from unfazed_taskiq.contrib.result_backend.middleware import TaskiqResultPreSendMiddleware
 from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
@@ -202,3 +206,41 @@ class TestTaskiqResultPreSendMiddleware:
         assert isinstance(row.task_kwargs, dict)
         assert TASKIQ_JSON_STR_FALLBACK_KEY in row.task_kwargs
         assert "_NotJson" in row.task_kwargs[TASKIQ_JSON_STR_FALLBACK_KEY]
+
+    async def test_pre_send_integrity_error_retries_update(
+        self, middleware: TaskiqResultPreSendMiddleware
+    ) -> None:
+        """Race: first update sees 0 rows, create loses duplicate-key, retry update applies."""
+        await TaskiqResultModel.create(
+            task_id="msg-integrity",
+            status=int(TaskStatus.STARTED),
+            task_name="before",
+        )
+        update_calls = [0]
+        orig_execute = UpdateQuery._execute
+
+        async def _execute_first_returns_zero(self: UpdateQuery) -> int:
+            if self.model is TaskiqResultModel:
+                update_calls[0] += 1
+                if update_calls[0] == 1:
+                    return 0
+            return await orig_execute(self)
+
+        message = TaskiqMessage(
+            task_id="msg-integrity",
+            task_name="after.race",
+            args=[1],
+            kwargs={},
+            labels={},
+        )
+        with patch.object(UpdateQuery, "_execute", _execute_first_returns_zero):
+            with patch.object(
+                TaskiqResultModel,
+                "create",
+                side_effect=TortoiseIntegrityError("duplicate"),
+            ):
+                out = await middleware.pre_send(message)
+        assert out is message
+        row = await TaskiqResultModel.get(task_id="msg-integrity")
+        assert row.task_name == "after.race"
+        assert row.task_args == [1]

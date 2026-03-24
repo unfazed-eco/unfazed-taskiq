@@ -4,6 +4,7 @@ from typing import Optional, TypeVar
 from taskiq import AsyncResultBackend, TaskiqResult
 from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.serializers import PickleSerializer
+from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
 
 from unfazed_taskiq.contrib.result_backend.exceptions import (
     ResultIsMissingError,
@@ -32,35 +33,35 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
         task_id: str,
         result: TaskiqResult[_ReturnType],
     ) -> None:
-        """Store result. Query first, then update or create."""
+        """Store result using update-first upsert (create on miss; retry update on race)."""
         result_bytes = self.serializer.dumpb(result)
         status = TaskStatus.SUCCESS if not result.is_err else TaskStatus.FAILURE
         date_done = int(time.time() * 1000)
         traceback_val = result.log if result.is_err else None
         return_value_db = encode_for_json_field(result.return_value)
 
-        existing = await TaskiqResultModel.filter(task_id=task_id).first()
-        if existing:
-            await TaskiqResultModel.filter(task_id=task_id).update(
-                result=result_bytes,
-                status=int(status),
-                date_done=date_done,
-                traceback=traceback_val,
-                return_value=return_value_db,
-            )
-        else:
-            await TaskiqResultModel.create(
-                task_id=task_id,
-                result=result_bytes,
-                status=int(status),
-                date_done=date_done,
-                traceback=traceback_val,
-                return_value=return_value_db,
-            )
+        update_values = {
+            "result": result_bytes,
+            "status": int(status),
+            "date_done": date_done,
+            "traceback": traceback_val,
+            "return_value": return_value_db,
+        }
+        updated = await TaskiqResultModel.filter(task_id=task_id).update(**update_values)
+        if updated == 0:
+            try:
+                await TaskiqResultModel.create(
+                    task_id=task_id,
+                    **update_values,
+                )
+            except TortoiseIntegrityError:
+                await TaskiqResultModel.filter(task_id=task_id).update(**update_values)
 
     def _is_row_ready(self, row: TaskiqResultModel) -> bool:
-        """Check if row represents a completed task (unified criteria for ready)."""
-        return row.status in (TaskStatus.SUCCESS, TaskStatus.FAILURE)
+        """Completed task: terminal status and serialized result blob present."""
+        if row.status not in (TaskStatus.SUCCESS, TaskStatus.FAILURE):
+            return False
+        return row.result is not None
 
     async def is_result_ready(self, task_id: str) -> bool:
         """Check if result exists for task_id and task has completed (SUCCESS or FAILURE)."""

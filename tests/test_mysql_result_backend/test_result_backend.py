@@ -1,5 +1,16 @@
+"""Tests for ``MySQLResultBackend``.
+
+``set_result`` and ``get_result`` are exercised in separate test classes. Setup uses
+``TaskiqResultModel.create`` / ORM (trusted) and ``PickleSerializer`` for blobs, not
+``set_result``, so a failure in ``get_result`` tests cannot be attributed to ``set_result``.
+"""
+
+from unittest.mock import patch
+
 import pytest
 from taskiq.result import TaskiqResult
+from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
+from tortoise.queryset import UpdateQuery
 from taskiq.serializers import PickleSerializer
 
 from unfazed_taskiq.contrib.result_backend.exceptions import (
@@ -21,6 +32,43 @@ class _OpaqueReturnValue:
         return "opaque-rv"
 
 
+def _default_serializer() -> PickleSerializer:
+    return PickleSerializer()
+
+
+async def _seed_completed_row(
+    *,
+    task_id: str,
+    return_value: object = 1,
+    is_err: bool = False,
+    log: str | None = None,
+    task_name: str | None = None,
+    schedule_id: str | None = None,
+    execution_time: float = 1.0,
+) -> None:
+    """Insert a terminal-status row with a valid result blob (trusted test setup)."""
+    ser = _default_serializer()
+    tr = TaskiqResult(
+        is_err=is_err,
+        return_value=return_value,
+        execution_time=execution_time,
+        log=log,
+    )
+    blob = ser.dumpb(tr)
+    status = TaskStatus.FAILURE if is_err else TaskStatus.SUCCESS
+    rv_db = None if is_err else encode_for_json_field(return_value)
+    await TaskiqResultModel.create(
+        task_id=task_id,
+        status=int(status),
+        result=blob,
+        date_done=123,
+        traceback=log if is_err else None,
+        return_value=rv_db,
+        task_name=task_name,
+        schedule_id=schedule_id,
+    )
+
+
 @pytest.fixture
 def backend() -> MySQLResultBackend:
     return MySQLResultBackend()
@@ -28,7 +76,6 @@ def backend() -> MySQLResultBackend:
 
 @pytest.fixture
 def backend_with_custom_serializer() -> MySQLResultBackend:
-    """Backend with explicit serializer for coverage of __init__ serializer param."""
     return MySQLResultBackend(serializer=PickleSerializer())
 
 
@@ -38,105 +85,10 @@ async def cleanup() -> None:
     await TaskiqResultModel.all().delete()
 
 
-class TestMySQLResultBackend:
-    async def test_set_result_and_get_result(self, backend: MySQLResultBackend) -> None:
-        """Test set_result and get_result round-trip."""
-        task_id = "test-task-001"
-        result = TaskiqResult(
-            is_err=False,
-            return_value=42,
-            execution_time=1.0,
-            log=None,
-        )
-        await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id)
-        assert retrieved.return_value == 42
-        assert retrieved.is_err is False
-        row = await TaskiqResultModel.get(task_id=task_id)
-        assert row.return_value == encode_for_json_field(42)
+class TestMySQLResultBackendSetResult:
+    """Only ``set_result``; assertions via ORM read / ``loadb`` on ``row.result``."""
 
-    async def test_set_result_and_get_result_with_logs(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Test get_result with_logs=True preserves log."""
-        task_id = "test-task-logs"
-        result = TaskiqResult(
-            is_err=False,
-            return_value=1,
-            execution_time=0.5,
-            log="some log output",
-        )
-        await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id, with_logs=True)
-        assert retrieved.log == "some log output"
-
-    async def test_get_result_with_logs_false_clears_log(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Test get_result with_logs=False sets log to None."""
-        task_id = "test-task-no-logs"
-        result = TaskiqResult(
-            is_err=False,
-            return_value=1,
-            execution_time=0.5,
-            log="log content",
-        )
-        await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id, with_logs=False)
-        assert retrieved.log is None
-
-    async def test_is_result_ready_true(self, backend: MySQLResultBackend) -> None:
-        """Test is_result_ready returns True when result exists."""
-        task_id = "test-ready"
-        result = TaskiqResult(
-            is_err=False,
-            return_value=1,
-            execution_time=0,
-            log=None,
-        )
-        await backend.set_result(task_id, result)
-        assert await backend.is_result_ready(task_id) is True
-
-    async def test_is_result_ready_false(self, backend: MySQLResultBackend) -> None:
-        """Test is_result_ready returns False when result does not exist."""
-        assert await backend.is_result_ready("nonexistent-task") is False
-
-    async def test_get_result_raises_result_is_missing_when_no_record(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Test get_result raises ResultIsMissingError when task record does not exist."""
-        with pytest.raises(ResultIsMissingError, match="not found in database"):
-            await backend.get_result("nonexistent-task")
-
-    async def test_query_first_then_write_update(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Test set_result updates existing record (query-first-then-write)."""
-        task_id = "test-update"
-        # Create initial record via middleware flow (status=STARTED, no result)
-        await TaskiqResultModel.create(
-            task_id=task_id,
-            status=int(TaskStatus.STARTED),
-            task_name="test.task",
-        )
-        # set_result should update, not create
-        result = TaskiqResult(
-            is_err=False,
-            return_value=99,
-            execution_time=2.0,
-            log=None,
-        )
-        await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id)
-        assert retrieved.return_value == 99
-        # Should still be one record
-        count = await TaskiqResultModel.filter(task_id=task_id).count()
-        assert count == 1
-
-    async def test_query_first_then_write_create(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Test set_result creates when record does not exist."""
+    async def test_set_result_inserts_when_no_row(self, backend: MySQLResultBackend) -> None:
         task_id = "test-create-only"
         result = TaskiqResult(
             is_err=False,
@@ -145,11 +97,36 @@ class TestMySQLResultBackend:
             log=None,
         )
         await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id)
-        assert retrieved.return_value == 123
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.status == TaskStatus.SUCCESS
+        assert row.result is not None
+        assert _default_serializer().loadb(row.result).return_value == 123
+        assert row.return_value == encode_for_json_field(123)
 
-    async def test_failure_result(self, backend: MySQLResultBackend) -> None:
-        """Test storing and retrieving failed task result."""
+    async def test_set_result_updates_existing_started_row(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        task_id = "test-update"
+        await TaskiqResultModel.create(
+            task_id=task_id,
+            status=int(TaskStatus.STARTED),
+            task_name="test.task",
+        )
+        result = TaskiqResult(
+            is_err=False,
+            return_value=99,
+            execution_time=2.0,
+            log=None,
+        )
+        await backend.set_result(task_id, result)
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.status == TaskStatus.SUCCESS
+        assert _default_serializer().loadb(row.result).return_value == 99
+        assert await TaskiqResultModel.filter(task_id=task_id).count() == 1
+
+    async def test_set_result_failure_persists_traceback_and_status(
+        self, backend: MySQLResultBackend
+    ) -> None:
         task_id = "test-failure"
         result = TaskiqResult(
             is_err=True,
@@ -158,35 +135,17 @@ class TestMySQLResultBackend:
             log="Traceback: error occurred",
         )
         await backend.set_result(task_id, result)
-        retrieved = await backend.get_result(task_id, with_logs=True)
-        assert retrieved.is_err is True
-        assert retrieved.log == "Traceback: error occurred"
         row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.status == TaskStatus.FAILURE
+        assert row.traceback == "Traceback: error occurred"
         assert row.return_value is None
+        loaded = _default_serializer().loadb(row.result)
+        assert loaded.is_err is True
 
-    async def test_init_with_custom_serializer(
+    async def test_set_result_string_return_value_column_uses_fallback_shape(
         self, backend_with_custom_serializer: MySQLResultBackend
     ) -> None:
-        """Test backend works with explicit serializer (covers __init__ serializer param)."""
-        task_id = "test-custom-serializer"
-        result = TaskiqResult(
-            is_err=False,
-            return_value="serialized",
-            execution_time=0,
-            log=None,
-        )
-        await backend_with_custom_serializer.set_result(task_id, result)
-        retrieved = await backend_with_custom_serializer.get_result(task_id)
-        assert retrieved.return_value == "serialized"
-        row = await TaskiqResultModel.get(task_id=task_id)
-        assert row.return_value == {
-            TASKIQ_JSON_STR_FALLBACK_KEY: "serialized",
-        }
-
-    async def test_set_result_string_return_value_uses_json_field_fallback_shape(
-        self, backend: MySQLResultBackend
-    ) -> None:
-        """Bare str is wrapped for Tortoise JSONField; blob still holds real value."""
+        """Bare str for return_value uses JSONField fallback; covers explicit serializer in ``__init__``."""
         task_id = "test-rv-str-col"
         result = TaskiqResult(
             is_err=False,
@@ -194,12 +153,11 @@ class TestMySQLResultBackend:
             execution_time=0,
             log=None,
         )
-        await backend.set_result(task_id, result)
+        await backend_with_custom_serializer.set_result(task_id, result)
         row = await TaskiqResultModel.get(task_id=task_id)
         assert row.return_value == {TASKIQ_JSON_STR_FALLBACK_KEY: "hello"}
-        assert (await backend.get_result(task_id)).return_value == "hello"
 
-    async def test_set_result_non_serializable_return_value_fallback(
+    async def test_set_result_non_json_return_value_column_fallback(
         self, backend: MySQLResultBackend
     ) -> None:
         task_id = "test-rv-opaque"
@@ -214,89 +172,163 @@ class TestMySQLResultBackend:
         assert isinstance(row.return_value, dict)
         assert TASKIQ_JSON_STR_FALLBACK_KEY in row.return_value
         assert "opaque-rv" in row.return_value[TASKIQ_JSON_STR_FALLBACK_KEY]
-        loaded = await backend.get_result(task_id)
-        assert isinstance(loaded.return_value, _OpaqueReturnValue)
 
-    async def test_is_result_ready_false_when_started(
+    async def test_set_result_integrity_error_retries_update(
         self, backend: MySQLResultBackend
     ) -> None:
-        """Test is_result_ready returns False when record exists but status is STARTED."""
-        task_id = "test-started"
+        """Race: first update returns 0, create hits duplicate key, second update persists."""
+        task_id = "integrity-set"
         await TaskiqResultModel.create(
             task_id=task_id,
             status=int(TaskStatus.STARTED),
-            task_name="test.task",
+            task_name="t",
         )
-        assert await backend.is_result_ready(task_id) is False
+        result = TaskiqResult(
+            is_err=False,
+            return_value=55,
+            execution_time=0,
+            log=None,
+        )
+        update_calls = [0]
+        orig_execute = UpdateQuery._execute
 
-    async def test_get_result_raises_result_not_ready_when_task_still_running(
+        async def _execute_first_returns_zero(self: UpdateQuery) -> int:
+            if self.model is TaskiqResultModel:
+                update_calls[0] += 1
+                if update_calls[0] == 1:
+                    return 0
+            return await orig_execute(self)
+
+        with patch.object(UpdateQuery, "_execute", _execute_first_returns_zero):
+            with patch.object(
+                TaskiqResultModel,
+                "create",
+                side_effect=TortoiseIntegrityError("duplicate"),
+            ):
+                await backend.set_result(task_id, result)
+        row = await TaskiqResultModel.get(task_id=task_id)
+        assert row.status == TaskStatus.SUCCESS
+        assert _default_serializer().loadb(row.result).return_value == 55
+
+
+class TestMySQLResultBackendGetResult:
+    """Only ``get_result`` / ``is_result_ready``; rows from ``_seed_completed_row`` (ORM)."""
+
+    async def test_get_result_deserializes_return_value(
         self, backend: MySQLResultBackend
     ) -> None:
-        """Test get_result raises ResultNotReadyError when record exists but result is None."""
-        task_id = "test-no-result"
-        await TaskiqResultModel.create(
+        task_id = "test-get-rv"
+        await _seed_completed_row(task_id=task_id, return_value=42)
+        retrieved = await backend.get_result(task_id)
+        assert retrieved.return_value == 42
+        assert retrieved.is_err is False
+
+    async def test_get_result_with_logs_true(self, backend: MySQLResultBackend) -> None:
+        task_id = "test-task-logs"
+        await _seed_completed_row(
             task_id=task_id,
-            status=int(TaskStatus.STARTED),
-            task_name="test.task",
-            result=None,
+            return_value=1,
+            log="some log output",
         )
-        with pytest.raises(ResultNotReadyError, match="has not completed yet"):
-            await backend.get_result(task_id)
+        retrieved = await backend.get_result(task_id, with_logs=True)
+        assert retrieved.log == "some log output"
+
+    async def test_get_result_with_logs_false_clears_log(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        task_id = "test-task-no-logs"
+        await _seed_completed_row(
+            task_id=task_id,
+            return_value=1,
+            log="log content",
+        )
+        retrieved = await backend.get_result(task_id, with_logs=False)
+        assert retrieved.log is None
+
+    async def test_is_result_ready_true_when_completed(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        task_id = "test-ready"
+        await _seed_completed_row(task_id=task_id)
+        assert await backend.is_result_ready(task_id) is True
 
     async def test_get_result_includes_task_name_in_labels(
         self, backend: MySQLResultBackend
     ) -> None:
-        """Test get_result adds task_name to labels when row has task_name."""
         task_id = "test-task-name-label"
-        await TaskiqResultModel.create(
+        await _seed_completed_row(
             task_id=task_id,
-            status=int(TaskStatus.STARTED),
             task_name="my.app.task",
         )
-        result = TaskiqResult(
-            is_err=False,
-            return_value=1,
-            execution_time=0,
-            log=None,
-        )
-        await backend.set_result(task_id, result)
         retrieved = await backend.get_result(task_id)
         assert retrieved.labels.get("task_name") == "my.app.task"
 
     async def test_get_result_includes_schedule_id_in_labels(
         self, backend: MySQLResultBackend
     ) -> None:
-        """Test get_result adds schedule_id to labels when row has schedule_id."""
         task_id = "test-schedule-id-label"
-        await TaskiqResultModel.create(
+        await _seed_completed_row(
             task_id=task_id,
-            status=int(TaskStatus.STARTED),
             schedule_id="sched-xyz789",
         )
-        result = TaskiqResult(
-            is_err=False,
-            return_value=1,
-            execution_time=0,
-            log=None,
-        )
-        await backend.set_result(task_id, result)
         retrieved = await backend.get_result(task_id)
         assert retrieved.labels.get("schedule_id") == "sched-xyz789"
 
-    async def test_inconsistent_row_is_result_ready_false_get_result_raises(
+
+class TestMySQLResultBackendReadinessAndErrors:
+    """Missing rows, running tasks, inconsistent or corrupt DB state."""
+
+    async def test_is_result_ready_false_when_no_record(
         self, backend: MySQLResultBackend
     ) -> None:
-        """Test that inconsistent row (STARTED + stale result) yields consistent behavior."""
+        assert await backend.is_result_ready("nonexistent-task") is False
+
+    async def test_get_result_raises_when_no_record(self, backend: MySQLResultBackend) -> None:
+        with pytest.raises(ResultIsMissingError, match="not found in database"):
+            await backend.get_result("nonexistent-task")
+
+    async def test_started_row_without_result_not_ready(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        """STARTED + no blob: ``is_result_ready`` false and ``get_result`` raises."""
+        task_id = "test-started-no-result"
+        await TaskiqResultModel.create(
+            task_id=task_id,
+            status=int(TaskStatus.STARTED),
+            task_name="test.task",
+            result=None,
+        )
+        assert await backend.is_result_ready(task_id) is False
+        with pytest.raises(ResultNotReadyError, match="has not completed yet"):
+            await backend.get_result(task_id)
+
+    async def test_started_with_stale_blob_still_not_ready(
+        self, backend: MySQLResultBackend
+    ) -> None:
         task_id = "test-inconsistent"
         await TaskiqResultModel.create(
             task_id=task_id,
             status=int(TaskStatus.STARTED),
             task_name="test.task",
-            result=PickleSerializer().dumpb(
+            result=_default_serializer().dumpb(
                 TaskiqResult(is_err=False, return_value=999, execution_time=0, log=None)
             ),
             date_done=12345,
             traceback="old error",
+        )
+        assert await backend.is_result_ready(task_id) is False
+        with pytest.raises(ResultNotReadyError, match="has not completed yet"):
+            await backend.get_result(task_id)
+
+    async def test_terminal_status_without_result_blob_not_ready(
+        self, backend: MySQLResultBackend
+    ) -> None:
+        task_id = "test-corrupt-success-no-blob"
+        await TaskiqResultModel.create(
+            task_id=task_id,
+            status=int(TaskStatus.SUCCESS),
+            result=None,
+            date_done=1,
         )
         assert await backend.is_result_ready(task_id) is False
         with pytest.raises(ResultNotReadyError, match="has not completed yet"):
