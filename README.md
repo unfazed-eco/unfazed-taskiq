@@ -215,37 +215,42 @@ Start the Taskiq worker to process tasks:
 uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 ```
 
-## How to use Result Backend
+## Result backend
 
-Result Backend saves task results so you can fetch them later. It supports **MySQL/TiDB** via `MySQLResultBackend`.
+**Result backend** is where this library **stores Taskiq task results** (MySQL/TiDB via `MySQLResultBackend`): each task gets a row with status, times, args/kwargs, and return value; the full serialized payload is kept in the `result` column.
 
-Task metadata and return snapshots are stored in Tortoise **JSON** columns using `unfazed_taskiq.contrib.result_backend.utils.encode_for_json_field`:
-
-- If the value is **JSON-serializable** (lists, dicts, numbers, booleans, `null`), it is stored as-is. A bare Python **`str`** at the **top level** of `return_value` is stored as `{"__taskiq_json_str_fallback__": "<s>"}` because Tortoise `JSONField` treats `str` as JSON *text* to parse.
-- If serialization fails, the whole value is stored as `{"__taskiq_json_str_fallback__": str(value)}` so enqueue / `set_result` is not blocked.
-
-`TaskiqResultPreSendMiddleware` writes `task_args` / `task_kwargs` this way before send. `MySQLResultBackend.set_result` writes **`return_value`** the same way (the authoritative `TaskiqResult` remains in the `result` blob).
-
-`TaskiqResultSerializer` (e.g. Unfazed Admin) serializes `task_args`, `task_kwargs`, and `return_value` in **`model_dump()`** as **JSON strings** (`json.dumps`, `ensure_ascii=False`) for display.
-
-`TaskiqResultModel` uses `Meta.ordering = ["-date_created", "-date_done"]` so list queries default to newest-first when ORM ordering applies.
+**Unfazed Admin**: add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`. It registers **`TaskiqResultAdmin`** with **`TaskiqResultSerializer`**, so you can **browse and open task runs in the admin UI** (list + detail, including a readable `return_value` field). The raw binary `result` field is not exposed as JSON in admin APIs.
 
 ### 1. How to enable
 
-Add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`, and set `RESULT` plus `TaskiqResultPreSendMiddleware` in `TASKIQ_CONFIG`:
+Add the app under `UNFAZED_SETTINGS["INSTALLED_APPS"]`, and add the middleware + result backend under `TASKIQ_CONFIG` for your Taskiq instance name (same place as broker/scheduler):
 
 ```python
-# Add to INSTALLED_APPS
-"unfazed_taskiq.contrib.result_backend",
+UNFAZED_SETTINGS = {
+    # ...
+    "INSTALLED_APPS": [
+        # ...your apps...
+        "unfazed_taskiq.contrib.result_backend",
+    ],
+}
 
-# In TASKIQ_CONFIG
-"BROKER": {
-    "MIDDLEWARES": ["unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware"],
-},
-"RESULT": {
-    "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
-    "OPTIONS": {},
-},
+UNFAZED_TASKIQ_SETTINGS = {
+    "TASKIQ_CONFIG": {
+        "your_taskiq_name": {  # e.g. DEFAULT_TASKIQ_NAME
+            "BROKER": {
+                # ...broker BACKEND / OPTIONS...
+                "MIDDLEWARES": [
+                    "unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware",
+                ],
+            },
+            "RESULT": {
+                "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
+                "OPTIONS": {},
+            },
+            # ...SCHEDULER, etc...
+        },
+    },
+}
 ```
 ### 2. Create table
 
