@@ -9,17 +9,17 @@ from unittest.mock import patch
 
 import pytest
 from taskiq.result import TaskiqResult
+from taskiq.serializers import PickleSerializer
 from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
 from tortoise.queryset import UpdateQuery
-from taskiq.serializers import PickleSerializer
 
-from unfazed_taskiq.contrib.result_backend.exceptions import (
+from unfazed_taskiq.contrib.result.exceptions import (
     ResultIsMissingError,
     ResultNotReadyError,
 )
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
-from unfazed_taskiq.contrib.result_backend.mysql import MySQLResultBackend
-from unfazed_taskiq.contrib.result_backend.utils import (
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.mysql import MySQLResultBackend
+from unfazed_taskiq.contrib.result.utils import (
     TASKIQ_JSON_STR_FALLBACK_KEY,
     encode_for_json_field,
 )

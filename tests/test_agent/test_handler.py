@@ -179,13 +179,13 @@ class TestAgentHandler:
         handler = self._make_handler(handler_module, monkeypatch)
         handler._ready = True
         handler.storage["alpha"] = MagicMock()
-        
+
         # Mock import_setting to ensure it's not called when already ready
         mock_import = MagicMock()
         monkeypatch.setattr(handler_module, "import_setting", mock_import)
-        
+
         handler.setup()
-        
+
         # import_setting should not be called since we return early
         mock_import.assert_not_called()
         assert handler._ready is True

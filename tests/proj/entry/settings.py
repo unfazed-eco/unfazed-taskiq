@@ -10,7 +10,7 @@ UNFAZED_SETTINGS = {
     "INSTALLED_APPS": [
         "tests.proj.app1",
         "unfazed_taskiq.contrib.scheduler",
-        "unfazed_taskiq.contrib.result_backend",
+        "unfazed_taskiq.contrib.result",
     ],
     "DATABASE": {
         "CONNECTIONS": {
@@ -64,11 +64,11 @@ UNFAZED_TASKIQ_SETTINGS = {
                 "BACKEND": "taskiq.InMemoryBroker",
                 "OPTIONS": {},
                 "MIDDLEWARES": [
-                    "unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware",
+                    "unfazed_taskiq.contrib.result.middleware.TaskiqResultPreSendMiddleware",
                 ],
             },
             "RESULT": {
-                "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
+                "BACKEND": "unfazed_taskiq.contrib.result.mysql.MySQLResultBackend",
                 "OPTIONS": {},
             },
             "SCHEDULER": {

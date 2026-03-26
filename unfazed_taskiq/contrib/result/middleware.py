@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Union
 from taskiq.abc.middleware import TaskiqMiddleware
 from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
 
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
-from unfazed_taskiq.contrib.result_backend.utils import encode_for_json_field
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.utils import encode_for_json_field
 
 if TYPE_CHECKING:  # pragma: no cover
     from taskiq.message import TaskiqMessage

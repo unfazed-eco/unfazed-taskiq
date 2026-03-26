@@ -1,11 +1,11 @@
-"""Tests for result_backend models and app."""
+"""Tests for contrib.result models and app."""
 
 import pytest
 from unfazed.core import Unfazed
 
-from unfazed_taskiq.contrib.result_backend.app import AppConfig
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
-from unfazed_taskiq.contrib.result_backend.serializer import TaskiqResultSerializer
+from unfazed_taskiq.contrib.result.app import AppConfig
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.serializer import TaskiqResultSerializer
 
 
 class TestTaskStatus:
@@ -72,5 +72,5 @@ class TestAppConfig:
     @pytest.mark.asyncio
     async def test_ready(self, unfazed: Unfazed) -> None:
         """Test AppConfig.ready() completes without error."""
-        config = AppConfig(unfazed, "unfazed_taskiq.contrib.result_backend.app")
+        config = AppConfig(unfazed, "unfazed_taskiq.contrib.result.app")
         await config.ready()

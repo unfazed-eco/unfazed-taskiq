@@ -38,7 +38,7 @@ class TaskiqResultModel(models.Model):
             ),
         ]
         ordering = ["-date_created", "-date_done"]
-        
+
     id = fields.IntField(primary_key=True)
 
     task_id = fields.CharField(

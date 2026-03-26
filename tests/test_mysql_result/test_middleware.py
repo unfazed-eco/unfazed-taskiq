@@ -6,9 +6,9 @@ from taskiq.result import TaskiqResult
 from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
 from tortoise.queryset import UpdateQuery
 
-from unfazed_taskiq.contrib.result_backend.middleware import TaskiqResultPreSendMiddleware
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
-from unfazed_taskiq.contrib.result_backend.utils import TASKIQ_JSON_STR_FALLBACK_KEY
+from unfazed_taskiq.contrib.result.middleware import TaskiqResultPreSendMiddleware
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.utils import TASKIQ_JSON_STR_FALLBACK_KEY
 
 
 @pytest.fixture

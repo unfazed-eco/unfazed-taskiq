@@ -4,7 +4,6 @@ Task tests covering: regular, scheduled, args/kwargs, schedule_id, failing tasks
 Reference: https://taskiq-python.github.io/guide/testing-taskiq.html
 """
 
-import pytest
 from unfazed.core import Unfazed
 from unfazed.test import Requestfactory
 
@@ -17,8 +16,7 @@ from tests.proj.app1.tasks import (
     multiply,
     scheduled_echo,
 )
-from unfazed_taskiq.agent.handler import agents
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
 
 
 async def test_api(unfazed: Unfazed) -> None:

@@ -6,12 +6,12 @@ from taskiq.abc.serializer import TaskiqSerializer
 from taskiq.serializers import PickleSerializer
 from tortoise.exceptions import IntegrityError as TortoiseIntegrityError
 
-from unfazed_taskiq.contrib.result_backend.exceptions import (
+from unfazed_taskiq.contrib.result.exceptions import (
     ResultIsMissingError,
     ResultNotReadyError,
 )
-from unfazed_taskiq.contrib.result_backend.models import TaskiqResultModel, TaskStatus
-from unfazed_taskiq.contrib.result_backend.utils import encode_for_json_field
+from unfazed_taskiq.contrib.result.models import TaskiqResultModel, TaskStatus
+from unfazed_taskiq.contrib.result.utils import encode_for_json_field
 
 _ReturnType = TypeVar("_ReturnType")
 

@@ -219,7 +219,7 @@ uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 
 **Result backend** is where this library **stores Taskiq task results** (MySQL/TiDB via `MySQLResultBackend`): each task gets a row with status, times, args/kwargs, and return value; the full serialized payload is kept in the `result` column.
 
-**Unfazed Admin**: add `unfazed_taskiq.contrib.result_backend` to `INSTALLED_APPS`. It registers **`TaskiqResultAdmin`** with **`TaskiqResultSerializer`**, so you can **browse and open task runs in the admin UI** (list + detail, including a readable `return_value` field). The raw binary `result` field is not exposed as JSON in admin APIs.
+**Unfazed Admin**: add `unfazed_taskiq.contrib.result` to `INSTALLED_APPS`. It registers **`TaskiqResultAdmin`** with **`TaskiqResultSerializer`**, so you can **browse and open task runs in the admin UI** (list + detail, including a readable `return_value` field). The raw binary `result` field is not exposed as JSON in admin APIs.
 
 ### 1. How to enable
 
@@ -230,7 +230,7 @@ UNFAZED_SETTINGS = {
     # ...
     "INSTALLED_APPS": [
         # ...your apps...
-        "unfazed_taskiq.contrib.result_backend",
+        "unfazed_taskiq.contrib.result",
     ],
 }
 
@@ -240,11 +240,11 @@ UNFAZED_TASKIQ_SETTINGS = {
             "BROKER": {
                 # ...broker BACKEND / OPTIONS...
                 "MIDDLEWARES": [
-                    "unfazed_taskiq.contrib.result_backend.middleware.TaskiqResultPreSendMiddleware",
+                    "unfazed_taskiq.contrib.result.middleware.TaskiqResultPreSendMiddleware",
                 ],
             },
             "RESULT": {
-                "BACKEND": "unfazed_taskiq.contrib.result_backend.mysql.MySQLResultBackend",
+                "BACKEND": "unfazed_taskiq.contrib.result.mysql.MySQLResultBackend",
                 "OPTIONS": {},
             },
             # ...SCHEDULER, etc...
