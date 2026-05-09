@@ -47,7 +47,9 @@ class MySQLResultBackend(AsyncResultBackend[_ReturnType]):
             "traceback": traceback_val,
             "return_value": return_value_db,
         }
-        updated = await TaskiqResultModel.filter(task_id=task_id).update(**update_values)
+        updated = await TaskiqResultModel.filter(task_id=task_id).update(
+            **update_values
+        )
         if updated == 0:
             try:
                 await TaskiqResultModel.create(

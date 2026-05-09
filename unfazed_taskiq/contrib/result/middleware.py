@@ -21,9 +21,7 @@ class TaskiqResultPreSendMiddleware(TaskiqMiddleware):
         task_id = message.task_id
         task_name = message.task_name
         raw_args: Union[list, None] = list(message.args) if message.args else None
-        raw_kwargs: Union[dict, None] = (
-            dict(message.kwargs) if message.kwargs else None
-        )
+        raw_kwargs: Union[dict, None] = dict(message.kwargs) if message.kwargs else None
         task_args = encode_for_json_field(raw_args)
         task_kwargs = encode_for_json_field(raw_kwargs)
         labels = message.labels or {}
@@ -52,9 +50,7 @@ class TaskiqResultPreSendMiddleware(TaskiqMiddleware):
                     **update_values,
                 )
             except TortoiseIntegrityError:
-                await TaskiqResultModel.filter(task_id=task_id).update(
-                    **update_values
-                )
+                await TaskiqResultModel.filter(task_id=task_id).update(**update_values)
 
         return message
 

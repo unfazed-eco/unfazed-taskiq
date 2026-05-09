@@ -34,7 +34,8 @@ class TaskiqResultModel(models.Model):
                 fields=["schedule_id", "date_done"], name="idx_schedule_id_date_done"
             ),
             indexes.Index(
-                fields=["status"], name="idx_status",
+                fields=["status"],
+                name="idx_status",
             ),
         ]
         ordering = ["-date_created", "-date_done"]
@@ -52,7 +53,7 @@ class TaskiqResultModel(models.Model):
         null=True,
         description="Serialized TaskiqResult from serializer.dumpb",
     )
-    return_value = fields.JSONField(
+    return_value = fields.JSONField(  # type: ignore[var-annotated]
         null=True,
         description="JSON-serializable return_value; "
         "full value may exist only in result blob",
@@ -75,12 +76,12 @@ class TaskiqResultModel(models.Model):
         null=True,
         description="Schedule id for periodic tasks (from labels)",
     )
-    task_args = fields.JSONField(
+    task_args = fields.JSONField(  # type: ignore[var-annotated]
         null=True,
         description="Task positional arguments: JSON array if serializable, else "
         "{__taskiq_json_str_fallback__: str(list)}",
     )
-    task_kwargs = fields.JSONField(
+    task_kwargs = fields.JSONField(  # type: ignore[var-annotated]
         null=True,
         description="Task keyword arguments: JSON object if serializable, else "
         "{__taskiq_json_str_fallback__: str(dict)}",

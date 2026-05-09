@@ -5,6 +5,7 @@
 ``set_result``, so a failure in ``get_result`` tests cannot be attributed to ``set_result``.
 """
 
+from collections.abc import AsyncGenerator
 from unittest.mock import patch
 
 import pytest
@@ -80,7 +81,7 @@ def backend_with_custom_serializer() -> MySQLResultBackend:
 
 
 @pytest.fixture(autouse=True)
-async def cleanup() -> None:
+async def cleanup() -> AsyncGenerator[None, None]:
     yield
     await TaskiqResultModel.all().delete()
 
@@ -88,7 +89,9 @@ async def cleanup() -> None:
 class TestMySQLResultBackendSetResult:
     """Only ``set_result``; assertions via ORM read / ``loadb`` on ``row.result``."""
 
-    async def test_set_result_inserts_when_no_row(self, backend: MySQLResultBackend) -> None:
+    async def test_set_result_inserts_when_no_row(
+        self, backend: MySQLResultBackend
+    ) -> None:
         task_id = "test-create-only"
         result = TaskiqResult(
             is_err=False,
@@ -283,7 +286,9 @@ class TestMySQLResultBackendReadinessAndErrors:
     ) -> None:
         assert await backend.is_result_ready("nonexistent-task") is False
 
-    async def test_get_result_raises_when_no_record(self, backend: MySQLResultBackend) -> None:
+    async def test_get_result_raises_when_no_record(
+        self, backend: MySQLResultBackend
+    ) -> None:
         with pytest.raises(ResultIsMissingError, match="not found in database"):
             await backend.get_result("nonexistent-task")
 

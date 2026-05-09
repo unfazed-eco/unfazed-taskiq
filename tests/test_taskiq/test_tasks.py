@@ -30,7 +30,7 @@ async def test_api(unfazed: Unfazed) -> None:
 
 async def test_regular_task_positional_args(unfazed: Unfazed) -> None:
     """Regular task with positional arguments."""
-    task = await add.kiq(3, 5)
+    task = await add.kiq(3, 5)  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -39,7 +39,7 @@ async def test_regular_task_positional_args(unfazed: Unfazed) -> None:
 
 async def test_regular_task_named_params(unfazed: Unfazed) -> None:
     """Task with named parameters."""
-    task = await multiply.kiq(a=4, b=7)
+    task = await multiply.kiq(a=4, b=7)  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -48,7 +48,7 @@ async def test_regular_task_named_params(unfazed: Unfazed) -> None:
 
 async def test_task_variable_positional_args(unfazed: Unfazed) -> None:
     """Task with *args."""
-    task = await concat.kiq("a", "b", "c")
+    task = await concat.kiq("a", "b", "c")  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -57,7 +57,7 @@ async def test_task_variable_positional_args(unfazed: Unfazed) -> None:
 
 async def test_task_variable_keyword_args(unfazed: Unfazed) -> None:
     """Task with **kwargs."""
-    task = await merge.kiq(x="1", y="2", z="3")
+    task = await merge.kiq(x="1", y="2", z="3")  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -66,7 +66,7 @@ async def test_task_variable_keyword_args(unfazed: Unfazed) -> None:
 
 async def test_task_mixed_args(unfazed: Unfazed) -> None:
     """Task with positional, *args, and keyword param."""
-    task = await mixed_args.kiq(1, 2, 3, 4, prefix="sum=")
+    task = await mixed_args.kiq(1, 2, 3, 4, prefix="sum=")  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -76,8 +76,8 @@ async def test_task_mixed_args(unfazed: Unfazed) -> None:
 async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
     """Task with schedule_id in labels (simulates scheduled task)."""
     schedule_id = "sched-test-001"
-    task = await scheduled_echo.kicker().with_labels(schedule_id=schedule_id).kiq(
-        "hello"
+    task = (
+        await scheduled_echo.kicker().with_labels(schedule_id=schedule_id).kiq("hello")  # type: ignore[attr-defined]
     )
     result = await task.wait_result(timeout=10)
 
@@ -91,7 +91,9 @@ async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
     assert row.status == TaskStatus.SUCCESS
 
 
-async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sample_data: list) -> None:
+async def test_scheduled_task_via_scheduler(
+    unfazed: Unfazed, test_scheduler_sample_data: list
+) -> None:
     """Scheduled task triggered by scheduler (PeriodicTask with schedule_id)."""
     from unfazed_taskiq.contrib.scheduler.models import PeriodicTask
 
@@ -100,9 +102,11 @@ async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sam
     assert enabled is not None
 
     # Manually kick with same schedule_id as scheduler would
-    task = await scheduled_echo.kicker().with_labels(
-        schedule_id=enabled.schedule_id
-    ).kiq("scheduled")
+    task = (
+        await scheduled_echo.kicker()  # type: ignore[attr-defined]
+        .with_labels(schedule_id=enabled.schedule_id)
+        .kiq("scheduled")  # type: ignore[attr-defined]
+    )
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -115,7 +119,7 @@ async def test_scheduled_task_via_scheduler(unfazed: Unfazed, test_scheduler_sam
 
 async def test_failing_task(unfazed: Unfazed) -> None:
     """Task that raises exception - check return_value, traceback, DB."""
-    task = await failing_task.kiq("intentional failure")
+    task = await failing_task.kiq("intentional failure")  # type: ignore[attr-defined]
     result = await task.wait_result(timeout=10, with_logs=True)
 
     assert result.is_err is True

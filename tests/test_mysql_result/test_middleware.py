@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from unittest.mock import patch
 
 import pytest
@@ -17,7 +18,7 @@ def middleware() -> TaskiqResultPreSendMiddleware:
 
 
 @pytest.fixture(autouse=True)
-async def cleanup() -> None:
+async def cleanup() -> AsyncGenerator[None, None]:
     yield
     await TaskiqResultModel.all().delete()
 
