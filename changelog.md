@@ -1,3 +1,9 @@
+v0.0.8
+=====
+- feat [issue 5](https://github.com/unfazed-eco/unfazed-taskiq/issues/5) add MySQL Taskiq result backend with admin UI, middleware, serializer, and comprehensive tests (#5)
+- opt [issue 24](https://github.com/unfazed-eco/unfazed-taskiq/issues/24) add validator/serializer for scheduler configuration (#24)
+- docs [issue 32](https://github.com/unfazed-eco/unfazed-taskiq/issues/32) add LLM-facing reference documentation and fix type annotations (#32, #33)
+
 v0.0.7
 =====
 - fix [issue #20](https://github.com/unfazed-eco/unfazed-taskiq/issues/20) Task Trigger Logic
