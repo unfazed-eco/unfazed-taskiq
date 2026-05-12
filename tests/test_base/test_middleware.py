@@ -18,7 +18,8 @@ class TestUnfazedTaskiqExceptionMiddleware:
 
     def setup_method(self) -> None:
         """Set up test fixtures before each test method."""
-        self.middleware = UnfazedTaskiqExceptionMiddleware()
+        with patch("unfazed_taskiq.middleware.sentry_agent.setup"):
+            self.middleware = UnfazedTaskiqExceptionMiddleware()
         self.mock_message = MagicMock(spec=TaskiqMessage)
         self.mock_message.task_name = "test_task"
         self.mock_message.args = ("arg1", "arg2")
@@ -71,3 +72,17 @@ class TestUnfazedTaskiqExceptionMiddleware:
                 )
                 assert extra_data["exception"] == str(self.test_exception)
                 assert "traceback" in extra_data
+
+    def test_init_calls_sentry_setup_when_scope_handlers_empty(self) -> None:
+        """Test that __init__ calls sentry_agent.setup() when scope_handlers is empty."""
+        with patch("unfazed_taskiq.middleware.sentry_agent") as mock_sentry_agent:
+            mock_sentry_agent.scope_handlers = []  # Empty list
+            UnfazedTaskiqExceptionMiddleware()
+            mock_sentry_agent.setup.assert_called_once()
+
+    def test_init_skips_sentry_setup_when_scope_handlers_not_empty(self) -> None:
+        """Test that __init__ skips sentry_agent.setup() when scope_handlers is not empty."""
+        with patch("unfazed_taskiq.middleware.sentry_agent") as mock_sentry_agent:
+            mock_sentry_agent.scope_handlers = [MagicMock()]  # Non-empty list
+            UnfazedTaskiqExceptionMiddleware()
+            mock_sentry_agent.setup.assert_not_called()

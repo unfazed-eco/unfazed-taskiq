@@ -78,3 +78,13 @@ UNFAZED_TASKIQ_SETTINGS = {
         },
     },
 }
+# ---------------------------- Sentry --------------------------------
+DEFAULT_DSN = "http://cccc"
+DSN = os.getenv("SENTRY_DSN", DEFAULT_DSN)
+
+
+UNFAZED_SENTRY_SETTINGS = {
+    "DSN": DSN,
+    "ENVIRONMENT": "dev",
+    "SAMPLE_RATE": 1.0,
+}
