@@ -1,3 +1,8 @@
+v0.1.0
+=====
+- feat [PR #36](https://github.com/unfazed-eco/unfazed-taskiq/pull/36) persist task labels in the MySQL result backend and expose them in the admin UI and serializer
+- migration add a nullable `labels` JSON column to existing `taskiq_result` tables before upgrading (see `reference/result-backend.md`)
+
 v0.0.8
 =====
 - feat [issue 5](https://github.com/unfazed-eco/unfazed-taskiq/issues/5) add MySQL Taskiq result backend with admin UI, middleware, serializer, and comprehensive tests (#5)
