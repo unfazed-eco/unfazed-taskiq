@@ -4,6 +4,7 @@ Task tests covering: regular, scheduled, args/kwargs, schedule_id, failing tasks
 Reference: https://taskiq-python.github.io/guide/testing-taskiq.html
 """
 
+import pytest
 from unfazed.core import Unfazed
 from unfazed.test import Requestfactory
 
@@ -73,12 +74,14 @@ async def test_task_mixed_args(unfazed: Unfazed) -> None:
     assert result.return_value == "sum=10"
 
 
-async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
-    """Task with schedule_id in labels (simulates scheduled task)."""
+async def test_task_with_schedule_id(
+    unfazed: Unfazed, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Persist the outgoing message labels and its schedule ID."""
     schedule_id = "sched-test-001"
-    task = (
-        await scheduled_echo.kicker().with_labels(schedule_id=schedule_id).kiq("hello")  # type: ignore[attr-defined]
-    )
+    monkeypatch.setattr(scheduled_echo, "labels", {})
+    kicker = scheduled_echo.kicker()  # type: ignore[attr-defined]
+    task = await kicker.with_labels(schedule_id=schedule_id, batch_size=2).kiq("hello")
     result = await task.wait_result(timeout=10)
 
     assert result.is_err is False
@@ -88,6 +91,7 @@ async def test_task_with_schedule_id(unfazed: Unfazed) -> None:
     row = await TaskiqResultModel.filter(task_id=task.task_id).first()
     assert row is not None
     assert row.schedule_id == schedule_id
+    assert row.labels == {"schedule_id": schedule_id, "batch_size": "2"}
     assert row.status == TaskStatus.SUCCESS
 
 

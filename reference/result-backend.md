@@ -19,12 +19,19 @@ CREATE TABLE `taskiq_result` (
     `schedule_id` VARCHAR(255) NULL,                 -- 定时任务关联的 schedule_id
     `task_args` JSON NULL,                           -- 参数列表
     `task_kwargs` JSON NULL,                         -- 关键字参数
+    `labels` JSON NULL,                              -- 发送前的消息标签快照
     `traceback` TEXT NULL,                           -- 失败时的 traceback
     INDEX `idx_date_done` (`date_done`),
     INDEX `idx_task_name_date_done` (`task_name`, `date_done`),
     INDEX `idx_schedule_id_date_done` (`schedule_id`, `date_done`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+如果现有表缺少 `labels`，请在升级应用前执行以下 SQL 或等效的 ORM 迁移。
+
+```sql
+ALTER TABLE `taskiq_result` ADD COLUMN `labels` JSON NULL;
 ```
 
 ## 启用方式
@@ -91,11 +98,16 @@ backend = MySQLResultBackend(serializer=None)  # None 时默认 PickleSerializer
 
 - `task_id`, `task_name`, `task_args`, `task_kwargs`
 - `schedule_id`（从 `message.labels` 中提取）
+- `labels`（保存完整的发送时标签快照，包括自定义标签；空标签保存为 `{}`）
 - `date_created`（毫秒时间戳）
 - `status = TaskStatus.STARTED (1)`
 - `result`, `return_value`, `date_done`, `traceback` 清空为 `None`
 
 使用 upsert（先 update，若 update 行数=0 则 create），处理并发创建时的 IntegrityError 竞态。
+
+`labels` 仅在 `pre_send` 写入。复用同一 `task_id` 发送时会替换旧标签。未经过此中间件创建的结果记录，其 `labels` 为 `NULL`。
+
+Taskiq 在发送前会编码标签，例如 `batch_size=2` 在快照中保存为 `"2"`。标签未经脱敏，无法编码为 JSON 的消息标签遵循下述回退规则。
 
 `on_error` 钩子：将异常 traceback 写入 `result.log`，随后由 `MySQLResultBackend.set_result` 持久化。
 
@@ -126,14 +138,14 @@ value = await task.wait_result()  # 阻塞等待直到返回结果
 ## Unfazed Admin 集成
 
 在 `INSTALLED_APPS` 中添加 `"unfazed_taskiq.contrib.result"` 后，Admin UI 的 "TaskIQ" 标签下会有 `TaskiqResultAdmin`：
-- 列表展示 `task_id`、`task_name`、`status`、`task_args`、`task_kwargs`、`return_value`、时间戳、`schedule_id`、`traceback`
+- 列表和详情展示 `task_id`、`task_name`、`status`、`task_args`、`task_kwargs`、`return_value`、`labels`、时间戳、`schedule_id`、`traceback`
 - 支持按 `task_id`、`task_name`、`schedule_id` 搜索
 - 只读模式（不可添加/编辑，可删除）
 - `result` blob 字段不在 JSON 输出中暴露
 
 ## JSON 字段编码
 
-`task_args`、`task_kwargs`、`return_value` 存入 Tortoise `JSONField` 时使用 `encode_for_json_field()`：
+`task_args`、`task_kwargs`、`labels`、`return_value` 存入 Tortoise `JSONField` 时使用 `encode_for_json_field()`：
 
 ```python
 from unfazed_taskiq.contrib.result.utils import encode_for_json_field
