@@ -217,7 +217,7 @@ uv run taskiq unfazed-worker unfazed_taskiq.agent:broker -fsd -tp app/tasks.py
 
 ## Result backend
 
-**Result backend** is where this library **stores Taskiq task results** (MySQL/TiDB via `MySQLResultBackend`): each task gets a row with status, times, args/kwargs, and return value; the full serialized payload is kept in the `result` column.
+**Result backend** is where this library **stores Taskiq task results** (MySQL/TiDB via `MySQLResultBackend`): each task gets a row with status, times, args/kwargs, labels, and return value; the full serialized payload is kept in the `result` column.
 
 **Unfazed Admin**: add `unfazed_taskiq.contrib.result` to `INSTALLED_APPS`. It registers **`TaskiqResultAdmin`** with **`TaskiqResultSerializer`**, so you can **browse and open task runs in the admin UI** (list + detail, including a readable `return_value` field). The raw binary `result` field is not exposed as JSON in admin APIs.
 
@@ -277,6 +277,8 @@ CREATE TABLE `taskiq_result` (
         COMMENT 'JSON array or __taskiq_json_str_fallback__ str(list)',
     `task_kwargs` JSON NULL
         COMMENT 'JSON object or __taskiq_json_str_fallback__ str(dict)',
+    `labels` JSON NULL
+        COMMENT 'Task labels snapshot recorded',
     `traceback` TEXT NULL
         COMMENT 'Traceback when task failed',
     INDEX `idx_date_done` (`date_done`),
@@ -285,6 +287,14 @@ CREATE TABLE `taskiq_result` (
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+For an existing `taskiq_result` table without `labels`, run the following SQL or apply the equivalent ORM migration before upgrading the application.
+
+```sql
+ALTER TABLE `taskiq_result` ADD COLUMN `labels` JSON NULL;
+```
+
+`TaskiqResultPreSendMiddleware` saves the outgoing message labels before sending to the broker.
 
 ### 3. How to get the result
 

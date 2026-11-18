@@ -9,7 +9,7 @@ class TaskiqResultAdmin(ModelAdmin):
     component: str = "ModelAdmin"
 
     datetime_fields: list[str] = ["date_created", "date_done"]
-    json_fields: list[str] = ["task_args", "task_kwargs", "return_value"]
+    json_fields: list[str] = ["task_args", "task_kwargs", "return_value", "labels"]
 
     list_sort: list[str] = [
         "date_created",
@@ -27,6 +27,7 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_args",
         "task_kwargs",
         "return_value",
+        "labels",
         "date_created",
         "date_done",
         "schedule_id",
@@ -39,6 +40,7 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_args",
         "task_kwargs",
         "return_value",
+        "labels",
         "date_created",
         "date_done",
         "schedule_id",
@@ -61,6 +63,7 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_args",
         "task_kwargs",
         "return_value",
+        "labels",
         "date_created",
         "date_done",
         "schedule_id",
@@ -73,6 +76,7 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_args",
         "task_kwargs",
         "return_value",
+        "labels",
         "date_created",
         "date_done",
         "schedule_id",
@@ -85,6 +89,7 @@ class TaskiqResultAdmin(ModelAdmin):
         "task_args",
         "task_kwargs",
         "return_value",
+        "labels",
         "date_created",
         "date_done",
         "schedule_id",

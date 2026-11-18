@@ -32,6 +32,26 @@ def _make_serializer_row_kwargs(task_id: str, status: TaskStatus) -> dict:
 
 
 class TestTaskiqResultSerializer:
+    async def test_from_instance_preserves_nullable_fields(self) -> None:
+        row = await TaskiqResultModel.create(
+            task_id="serializer-null-fields", status=TaskStatus.STARTED
+        )
+        dumped = TaskiqResultSerializer.from_instance(row).model_dump()
+        assert "result" not in dumped
+        for name in (
+            "date_done",
+            "date_created",
+            "task_name",
+            "schedule_id",
+            "task_args",
+            "task_kwargs",
+            "traceback",
+            "return_value",
+            "labels",
+        ):
+            assert dumped[name] is None
+        await row.delete()
+
     @pytest.mark.asyncio
     async def test_from_instance_dumps_status_as_value(self) -> None:
         """Test serializer from_instance produces valid dump with status as enum value."""
@@ -42,6 +62,7 @@ class TestTaskiqResultSerializer:
         dumped = ser.model_dump()
         assert dumped["status"] == TaskStatus.SUCCESS
         assert dumped["task_id"] == "serializer-test-001"
+        assert dumped["labels"] is None
         await row.delete()
 
     @pytest.mark.asyncio
@@ -66,6 +87,32 @@ class TestTaskiqResultSerializer:
         ser = TaskiqResultSerializer.from_instance(row)
         assert ser.model_dump()["return_value"] == {"x": 1}
         await row.delete()
+
+    async def test_labels_from_db_column(self) -> None:
+        kwargs = _make_serializer_row_kwargs(
+            "serializer-labels-col", TaskStatus.STARTED
+        )
+        kwargs["labels"] = {"retry": 1, "schedule_id": "schedule"}
+        row = await TaskiqResultModel.create(**kwargs)
+        ser = TaskiqResultSerializer.from_instance(row)
+        assert ser.model_dump()["labels"] == kwargs["labels"]
+        await row.delete()
+
+
+class TestTaskiqResultAdmin:
+    def test_labels_are_visible_readonly_json(self) -> None:
+        from unfazed_taskiq.contrib.result.admin import TaskiqResultAdmin
+
+        admin = TaskiqResultAdmin()
+        admin.serializer = TaskiqResultSerializer
+        config = admin.to_serialize()
+        assert "labels" in config.attrs.list_order
+        assert "labels" in config.attrs.detail_display
+        assert config.fields["labels"].field_type == "JsonField"
+        assert config.fields["labels"].readonly is True
+        assert config.fields["labels"].show is True
+        assert config.fields["date_created"].field_type == "DatetimeField"
+        assert config.fields["date_done"].field_type == "DatetimeField"
 
 
 class TestAppConfig:

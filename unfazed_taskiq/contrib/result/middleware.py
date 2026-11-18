@@ -33,6 +33,7 @@ class TaskiqResultPreSendMiddleware(TaskiqMiddleware):
             "task_name": task_name,
             "task_args": task_args,
             "task_kwargs": task_kwargs,
+            "labels": encode_for_json_field(labels),
             "schedule_id": schedule_id,
             "status": int(TaskStatus.STARTED),
             "result": None,

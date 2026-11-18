@@ -105,6 +105,7 @@ class TestMySQLResultBackendSetResult:
         assert row.result is not None
         assert _default_serializer().loadb(row.result).return_value == 123
         assert row.return_value == encode_for_json_field(123)
+        assert row.labels is None
 
     async def test_set_result_updates_existing_started_row(
         self, backend: MySQLResultBackend
@@ -114,17 +115,20 @@ class TestMySQLResultBackendSetResult:
             task_id=task_id,
             status=int(TaskStatus.STARTED),
             task_name="test.task",
+            labels={"retry": 1},
         )
         result = TaskiqResult(
             is_err=False,
             return_value=99,
             execution_time=2.0,
             log=None,
+            labels={"retry": 2},
         )
         await backend.set_result(task_id, result)
         row = await TaskiqResultModel.get(task_id=task_id)
         assert row.status == TaskStatus.SUCCESS
         assert _default_serializer().loadb(row.result).return_value == 99
+        assert row.labels == {"retry": 1}
         assert await TaskiqResultModel.filter(task_id=task_id).count() == 1
 
     async def test_set_result_failure_persists_traceback_and_status(

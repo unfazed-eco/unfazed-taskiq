@@ -33,7 +33,12 @@ class TestTaskiqResultPreSendMiddleware:
             task_name="app.tasks.my_task",
             args=[1, 2],
             kwargs={"key": "value"},
-            labels={"schedule_id": "sched-abc123"},
+            labels={
+                "schedule_id": "sched-abc123",
+                "retry": 1,
+                "delay": 30.5,
+                "metadata": {"region": "中国", "enabled": True},
+            },
         )
         result = await middleware.pre_send(message)
         assert result is message
@@ -45,7 +50,14 @@ class TestTaskiqResultPreSendMiddleware:
         assert row.task_args == [1, 2]
         assert row.task_kwargs == {"key": "value"}
         assert row.schedule_id == "sched-abc123"
+        assert row.labels == message.labels
         assert row.date_created is not None
+
+        message.labels["retry"] = 2
+        message.labels["metadata"]["region"] = "changed"
+        await row.refresh_from_db()
+        assert row.labels["retry"] == 1
+        assert row.labels["metadata"]["region"] == "中国"
 
     async def test_pre_send_updates_existing(
         self, middleware: TaskiqResultPreSendMiddleware
@@ -56,6 +68,7 @@ class TestTaskiqResultPreSendMiddleware:
             status=int(TaskStatus.STARTED),
             task_name="old.task",
             date_created=1000,
+            labels={"old_label": "must be cleared"},
         )
         message = TaskiqMessage(
             task_id="msg-002",
@@ -70,6 +83,7 @@ class TestTaskiqResultPreSendMiddleware:
         assert row is not None
         assert row.task_name == "new.task"
         assert row.date_created != 1000
+        assert row.labels == {}
         count = await TaskiqResultModel.filter(task_id="msg-002").count()
         assert count == 1
 
@@ -138,6 +152,7 @@ class TestTaskiqResultPreSendMiddleware:
         assert row.task_args is None  # empty list is falsy -> None
         assert row.task_kwargs is None  # empty dict is falsy -> None
         assert row.schedule_id is None
+        assert row.labels == {}
 
     async def test_on_error_writes_traceback_to_result_log(
         self, middleware: TaskiqResultPreSendMiddleware
@@ -208,6 +223,21 @@ class TestTaskiqResultPreSendMiddleware:
         assert TASKIQ_JSON_STR_FALLBACK_KEY in row.task_kwargs
         assert "_NotJson" in row.task_kwargs[TASKIQ_JSON_STR_FALLBACK_KEY]
 
+    async def test_pre_send_labels_fallback_when_not_json_serializable(
+        self, middleware: TaskiqResultPreSendMiddleware
+    ) -> None:
+        labels = {"custom": object()}
+        message = TaskiqMessage(
+            task_id="msg-bad-labels",
+            task_name="app.task",
+            args=[],
+            kwargs={},
+            labels=labels,
+        )
+        assert await middleware.pre_send(message) is message
+        row = await TaskiqResultModel.get(task_id=message.task_id)
+        assert row.labels == {TASKIQ_JSON_STR_FALLBACK_KEY: str(labels)}
+
     async def test_pre_send_integrity_error_retries_update(
         self, middleware: TaskiqResultPreSendMiddleware
     ) -> None:
@@ -232,7 +262,7 @@ class TestTaskiqResultPreSendMiddleware:
             task_name="after.race",
             args=[1],
             kwargs={},
-            labels={},
+            labels={"retry": 2},
         )
         with patch.object(UpdateQuery, "_execute", _execute_first_returns_zero):
             with patch.object(
@@ -245,3 +275,4 @@ class TestTaskiqResultPreSendMiddleware:
         row = await TaskiqResultModel.get(task_id="msg-integrity")
         assert row.task_name == "after.race"
         assert row.task_args == [1]
+        assert row.labels == {"retry": 2}

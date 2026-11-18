@@ -86,6 +86,10 @@ class TaskiqResultModel(models.Model):
         description="Task keyword arguments: JSON object if serializable, else "
         "{__taskiq_json_str_fallback__: str(dict)}",
     )
+    labels = fields.JSONField(  # type: ignore[var-annotated]
+        null=True,
+        description="Task labels snapshot recorded before sending to the broker",
+    )
     traceback = fields.TextField(
         null=True,
         description="Traceback when task failed",
